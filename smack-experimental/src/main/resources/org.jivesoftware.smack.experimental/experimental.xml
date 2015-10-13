@@ -1,5 +1,6 @@
 <smack>
     <startupClasses>
         <className>org.jivesoftware.smackx.hoxt.HOXTManager</className>
+        <className>org.jivesoftware.smackx.mam.MamManager</className>
     </startupClasses>
 </smack>
