@@ -22,5 +22,6 @@ include 'smack-core',
 		'smack-android',
 		'smack-android-extensions',
 		'smack-java7',
+		'smack-serverless',		
 		'smack-integration-test',
 		'smack-repl'

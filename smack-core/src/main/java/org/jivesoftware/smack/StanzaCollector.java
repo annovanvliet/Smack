@@ -82,6 +82,10 @@ public class StanzaCollector {
         }
     }
 
+    public boolean isCanceled() {
+        return cancelled;
+    }
+
     /**
      * Returns the stanza(/packet) filter associated with this stanza(/packet) collector. The packet
      * filter is used to determine what packets are queued as results.

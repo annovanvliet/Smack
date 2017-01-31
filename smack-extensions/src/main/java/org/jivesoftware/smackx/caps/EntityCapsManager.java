@@ -59,10 +59,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.security.MessageDigest;
@@ -74,7 +76,7 @@ import java.security.NoSuchAlgorithmException;
  * @author Florian Schmaus
  * @see <a href="http://www.xmpp.org/extensions/xep-0115.html">XEP-0115: Entity Capabilities</a>
  */
-public final class EntityCapsManager extends Manager {
+public class EntityCapsManager extends Manager {
     private static final Logger LOGGER = Logger.getLogger(EntityCapsManager.class.getName());
 
     public static final String NAMESPACE = CapsExtension.NAMESPACE;
@@ -85,7 +87,7 @@ public final class EntityCapsManager extends Manager {
     /**
      * The default hash. Currently 'sha-1'.
      */
-    private static final String DEFAULT_HASH = StringUtils.SHA1;
+    public static final String DEFAULT_HASH = StringUtils.SHA1;
 
     private static String DEFAULT_ENTITY_NODE = "http://www.igniterealtime.org/projects/smack";
 
@@ -111,6 +113,13 @@ public final class EntityCapsManager extends Manager {
      */
     static final LruCache<Jid, NodeVerHash> JID_TO_NODEVER_CACHE = new LruCache<>(10000);
 
+    /**
+     * Set of listeners to be notified when the local client's
+     * capabilities string is updated
+     */
+    private final static Set<CapsVerListener> capsVerListeners =
+            new CopyOnWriteArraySet<CapsVerListener>();
+
     static {
         XMPPConnectionRegistry.addConnectionCreationListener(new ConnectionCreationListener() {
             public void connectionCreated(XMPPConnection connection) {
@@ -124,6 +133,18 @@ public final class EntityCapsManager extends Manager {
         } catch (NoSuchAlgorithmException e) {
             // Ignore
         }
+    }
+
+    public interface CapsVerListener {
+        public void capsVerUpdated(CapsVersionAndHash capsVersionAndHash);
+    }
+
+    public static void addCapsVerListener(CapsVerListener capsVerListener) {
+        capsVerListeners.add(capsVerListener);
+    }
+
+    public static void removeCapsVerListener(CapsVerListener capsVerListener) {
+        capsVerListeners.remove(capsVerListener);
     }
 
     /**
@@ -244,7 +265,7 @@ public final class EntityCapsManager extends Manager {
         CAPS_CACHE.clear();
     }
 
-    private static void addCapsExtensionInfo(Jid from, CapsExtension capsExtension) {
+    protected static void addCapsExtensionInfo(Jid from, CapsExtension capsExtension) {
         String capsExtensionHash = capsExtension.getHash();
         String hashInUppercase = capsExtensionHash.toUpperCase(Locale.US);
         // SUPPORTED_HASHES uses the format of MessageDigest, which is uppercase, e.g. "SHA-1" instead of "sha-1"
@@ -270,6 +291,11 @@ public final class EntityCapsManager extends Manager {
      * The entity node String used by this EntityCapsManager instance.
      */
     private String entityNode = DEFAULT_ENTITY_NODE;
+
+    protected EntityCapsManager() {
+        super(null);
+        throw new UnsupportedOperationException();
+    }
 
     private EntityCapsManager(XMPPConnection connection) {
         super(connection);
@@ -397,14 +423,27 @@ public final class EntityCapsManager extends Manager {
         updateLocalEntityCaps();
     }
 
+    public String getEntityNode() {
+        return entityNode;
+    }
+
     /**
      * Remove a record telling what entity caps node a user has.
      * 
      * @param user
      *            the user (Full JID)
      */
-    public static void removeUserCapsNode(String user) {
+    public static void removeUserCapsNode(Jid user) {
         JID_TO_NODEVER_CACHE.remove(user);
+    }
+
+    /**
+     * Add a record describing what enetity caps node a user has.
+     *
+     * @param user the user (Full JID)
+     */
+    public void addUserCapsNode(Jid user, String node, String ver) {
+        JID_TO_NODEVER_CACHE.put(user, new NodeVerHash(node, ver, DEFAULT_HASH));
     }
 
     /**
@@ -518,6 +557,10 @@ public final class EntityCapsManager extends Manager {
             catch (InterruptedException | NotConnectedException e) {
                 LOGGER.log(Level.WARNING, "Could could not update presence with caps info", e);
             }
+        }
+
+        for (CapsVerListener listener : capsVerListeners) {
+            listener.capsVerUpdated(currentCapsVersion);
         }
     }
 
