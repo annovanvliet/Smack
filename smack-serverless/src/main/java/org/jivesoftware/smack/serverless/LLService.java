@@ -18,27 +18,36 @@
 package org.jivesoftware.smack.serverless;
 
 
-import org.jivesoftware.smack.AbstractConnectionListener;
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+
 import org.jivesoftware.smack.ConnectionListener;
-import org.jivesoftware.smack.StanzaListener;
 import org.jivesoftware.smack.SmackConfiguration;
 import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.StanzaCollector;
+import org.jivesoftware.smack.StanzaListener;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
-import org.jivesoftware.smack.chat.ChatManagerListener;
 import org.jivesoftware.smack.chat2.Chat;
 import org.jivesoftware.smack.chat2.ChatManager;
 import org.jivesoftware.smack.chat2.IncomingChatMessageListener;
-import org.jivesoftware.smack.packet.Stanza;
-import org.jivesoftware.smack.packet.IQ;
-import org.jivesoftware.smack.packet.Message;
+import org.jivesoftware.smack.filter.AndFilter;
+import org.jivesoftware.smack.filter.IQTypeFilter;
+import org.jivesoftware.smack.filter.OrFilter;
 import org.jivesoftware.smack.filter.StanzaFilter;
 import org.jivesoftware.smack.filter.StanzaIdFilter;
-import org.jivesoftware.smack.filter.AndFilter;
-import org.jivesoftware.smack.filter.OrFilter;
-import org.jivesoftware.smack.filter.IQTypeFilter;
-import org.jivesoftware.smack.packet.XMPPError;
+import org.jivesoftware.smack.packet.IQ;
+import org.jivesoftware.smack.packet.Message;
+import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.serverless.LLConnectionConfiguration.Builder;
 import org.jivesoftware.smack.serverless.service.LLPresenceDiscoverer;
 import org.jivesoftware.smack.serverless.service.LLPresenceListener;
@@ -50,19 +59,6 @@ import org.jxmpp.jid.DomainBareJid;
 import org.jxmpp.jid.EntityBareJid;
 import org.jxmpp.jid.EntityJid;
 import org.jxmpp.jid.Jid;
-
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketException;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.Map;
-import java.util.ArrayList;
-import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * LLService acts as an abstract interface to a Link-local XMPP service
@@ -274,7 +270,7 @@ public abstract class LLService {
     public void init() throws XMPPException {
         // allocate a new port for remote clients to connect to
         socket = bindRange(DEFAULT_MIN_PORT, DEFAULT_MAX_PORT);
-//        presence.setPort(socket.getLocalPort());
+        presence.setPort(socket.getLocalPort());
 
         // register service on the allocated port
         registerService();
@@ -660,9 +656,9 @@ public abstract class LLService {
      *
      * @param serviceName the service name
      * @return a chat session instance associated with the given service name.
+     * @throws InterruptedException 
      */
-    @SuppressWarnings("deprecation")
-    public Chat getChat(Jid serviceName) throws XMPPException, IOException, SmackException {
+    public Chat getChat(Jid serviceName) throws XMPPException, IOException, SmackException, InterruptedException {
         Chat chat = chats.get(serviceName);
         if (chat == null) {
             LLPresence presence = getPresenceByServiceName(serviceName);
@@ -685,9 +681,10 @@ public abstract class LLService {
      * 
      * @param serviceName Service name of the remote client.
      * @return A connection to the given service name.
-     * @throws DNSException 
+     * @throws InterruptedException 
+     * @throws XMPPException 
      */
-    public XMPPLLConnection getConnection(Jid serviceName) throws XMPPException.XMPPErrorException, IOException, SmackException, DNSException {
+    public XMPPLLConnection getConnection(Jid serviceName) throws IOException, SmackException, XMPPException, InterruptedException {
         // If a connection exists, return it.
         XMPPLLConnection connection = getConnectionTo(serviceName);
         if (connection != null)

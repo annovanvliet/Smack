@@ -42,6 +42,7 @@ import org.jxmpp.stringprep.XmppStringprepException;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Random;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -74,15 +75,18 @@ public class TestMDNS extends SmackTestSuite {
             BufferedReader stdIn = new BufferedReader(
                     new InputStreamReader(System.in));
 
+            int rnd = new Random().nextInt(30);
+            
             // Create some kind of user name
             EntityJid name = JidCreate.entityBareFrom("smack-mdns@localhost");
             try {   /// System.getenv("USERNAME")
-                name = JidCreate.entityBareFrom( "Tester" + "@" + java.net.InetAddress.getLocalHost().getHostName());
+                name = JidCreate.entityBareFrom( "Tester" + rnd + "@" + java.net.InetAddress.getLocalHost().getHostName());
             } catch (Exception e) {}
+            
 
             System.out.println("Link-local presence name set to '" + name + "'");
             // Create a basic presence (only set name, and status to available)
-            LLPresence presence = new LLPresence(name, "mlink.xmpp.test", 52001);
+            LLPresence presence = new LLPresence(name);
             System.out.println("Initiating Link-local service...");
             // Create a XMPP Link-local service.
             service = JmDNSService.create(presence);

@@ -32,6 +32,7 @@ import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.packet.Nonza;
 import org.jivesoftware.smack.packet.Stanza;
 import org.jxmpp.jid.parts.Resourcepart;
+import org.xmlpull.v1.XmlPullParser;
 
 
 /**
@@ -53,12 +54,12 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
     /**
      * Protected access level because of unit test purposes
      */
-    protected Object stanzaWriter;
+    protected LLStanzaWriter stanzaWriter;
 
     /**
      * Protected access level because of unit test purposes
      */
-    protected Object stanzaReader;
+    protected LLStanzaReader stanzaReader;
 
     /**
      * Instantiate a new link-local connection. Use the config parameter to
@@ -174,7 +175,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
      * Create a socket, connect to the remote peer and initiate a XMPP stream session.
      * @return 
      */
-    public AbstractXMPPConnection connect() throws IOException, SmackException, XMPPException.XMPPErrorException {
+    public void connectInternal() throws IOException, SmackException, XMPPException.XMPPErrorException {
         String host = remotePresence.getHost();
         int port = remotePresence.getPort();
 
@@ -198,9 +199,6 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
 //        }
         initConnection();
 
-        callConnectionConnectedListener();
-        
-        return this;
     }
 
 
@@ -212,14 +210,14 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
         if (config.getXMPPServiceDomain() == null) {
             shutdown();
         } else {
-//            stanzaWriter = new LLStanzaWriter();
+            stanzaWriter = new LLStanzaWriter();
             if (debugger != null) {
                 if (debugger.getWriterListener() != null) {
                     addAsyncStanzaListener(debugger.getWriterListener(), null);
                 }
             }
             // TODO
-//            stanzaWriter.startup();
+            stanzaWriter.startup();
             
             callConnectionConnectedListener();
         }
@@ -259,11 +257,11 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
             // Don't initialize stanza writer until we know it's a valid connection
             // unless we are the initiator. If we are NOT the initializer, we instead
             // wait for a stream initiation before doing anything.
-//            if (isInitiator())
-//                stanzaWriter = new LLStanzaWriter();
+            if (isInitiator())
+                stanzaWriter = new LLStanzaWriter();
 
-//            // Initialize stanza reader
-//            stanzaReader = new LLStanzaReader();
+            // Initialize stanza reader
+            stanzaReader = new LLStanzaReader();
 
             // If debugging is enabled, we should start the thread that will listen for
             // all stanzas and then log them.
@@ -279,11 +277,11 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
             // stream to the server. If not, a stanza writer will be started after
             // receiving an initial stream start tag.
             // TODO
-//            if (isInitiator())
-//                stanzaWriter.startup();
+            if (isInitiator())
+                stanzaWriter.init();
             // Start the stanza reader. The startup() method will block until we
             // get an opening stream stanza back from server.
-//            stanzaReader.startup();
+            stanzaReader.startup();
         }
         catch (XMPPException.XMPPErrorException ex) {
             // An exception occurred in setting up the connection. Make sure we shut down the
@@ -298,14 +296,14 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
     private void shutdownStanzaReadersAndWritersAndCloseSocket() {
         if (stanzaWriter != null) {
             try {
-//                stanzaWriter.shutdown();
+                stanzaWriter.shutdown();
             }
             catch (Throwable ignore) { /* ignore */ }
             stanzaWriter = null;
         }
         if (stanzaReader != null) {
             try {
-//                stanzaReader.shutdown();
+                stanzaReader.shutdown();
             }
             catch (Throwable ignore) { /* ignore */ }
             stanzaReader = null;
@@ -359,10 +357,10 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
     protected void shutdown() {
         connection = null;
 
-//        if (stanzaReader != null)
-//            stanzaReader.shutdown();
-//        if (stanzaWriter != null)
-//            stanzaWriter.shutdown();
+        if (stanzaReader != null)
+            stanzaReader.shutdown();
+        if (stanzaWriter != null)
+            stanzaWriter.shutdown();
 
         // Wait 150 ms for processes to clean-up, then shutdown.
         try {
@@ -408,99 +406,143 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
         stanzaReader = null;
     }
 
-//    protected class LLStanzaReader extends StanzaReader {
-//
-//        private boolean mGotStreamOpenedStanza = false;
-//
-//        LLStanzaReader() throws SmackException {
-//        }
-//
-//        public synchronized void startup() throws IOException, SmackException {
-//            readerThread.start();
-//
-//            try {
-//                // Wait until either:
-//                // - the remote peer's stream initialization stanza has been parsed
-//                // - an exception is thrown while parsing
-//                // - the timeout occurs
-//                if (connection.isInitiator())
-//                    wait(getStanzaReplyTimeout());
-//            }
-//            catch (InterruptedException ie) {
-//                // Ignore.
-//                ie.printStackTrace();
-//            }
-//            if (connection.isInitiator() && !mGotStreamOpenedStanza) {
-//                throwConnectionExceptionOrNoResponse();
-//            }
-//        }
-//
-//        @Override
-//        protected void handleStreamOpened(XmlPullParser parser) throws Exception {
-//            super.handleStreamOpened(parser);
-//
-//            // if we are the initiator, this means stream has been initiated
-//            // if we aren't the initiator, this means we have to respond with
-//            // stream initiator.
-//            if (connection.isInitiator()) {
-//                mGotStreamOpenedStanza = true;
-//                connection.connectionID = connection.getServiceName();
-//                //releaseConnectionIDLock();
-//            }
-//            else {
-//                // Check if service name is a known entity
-//                // if it is, open the stream and keep it open
-//                // otherwise open and immediately close it
-//                if (connection.getServiceName() == null) {
-//                    System.err.println("No service name specified in stream initiation, canceling.");
-//                    shutdown();
-//                } else {
-//                    // Check if service name is known, if so
-//                    // we will continue the session
-//                    LLPresence presence = service.getPresenceByServiceName(connection.getServiceName());
-//                    if (presence != null) {
-//                        connection.setRemotePresence(presence);
-//                        connectionID = connection.getServiceName();
-//                        connection.streamInitiatingReceived();
-//                        //releaseConnectionIDLock();
-//                    } else {
-//                        System.err.println("Unknown service name '" +
-//                                connection.getServiceName() +
-//                                "' specified in stream initation, canceling.");
-//                        shutdown();
-//                    }
-//                }
-//            }
-//        }
-//    }
-//
-//    protected class LLStanzaWriter extends StanzaWriter {
-//
-//
-//        @Override
-//        protected void openStream() throws IOException {
-//            // Unlike traditional XMPP Stream initiation,
-//            // we must provide our XEP-0174 Service Name
-//            // in a "from" attribute
-//            StringBuilder stream = new StringBuilder();
-//            stream.append("<stream:stream");
-//            stream.append(" to=\"").append(getServiceName()).append("\"");
-//            if (initiator)
-//                stream.append(" from=\"").append(((LLConnectionConfiguration) config).getLocalPresence().getServiceName()).append("\"");
-//            else {
-//                // TODO: We should be able to access the service name from the
-//                // stream opening stanza that this is a response to.
-//                String localServiceName = ((LLConnectionConfiguration) config).getLocalPresence().getJID();
-//                localServiceName = localServiceName.substring(0, localServiceName.lastIndexOf("."));
-//                stream.append(" from=\"").append(localServiceName).append("\"");
-//            }
-//            stream.append(" xmlns=\"jabber:client\"");
-//            stream.append(" xmlns:stream=\"http://etherx.jabber.org/streams\"");
-//            stream.append(" version=\"1.0\">");
-//            writer.write(stream.toString());
-//            writer.flush();
-//        }
-//    }
+    protected class LLStanzaReader {
+
+        private boolean mGotStreamOpenedStanza = false;
+
+
+        public synchronized void startup() throws IOException, SmackException {
+            //readerThread.start();
+
+            try {
+                // Wait until either:
+                // - the remote peer's stream initialization stanza has been parsed
+                // - an exception is thrown while parsing
+                // - the timeout occurs
+                if (connection.isInitiator())
+                    wait(getReplyTimeout());
+            }
+            catch (InterruptedException ie) {
+                // Ignore.
+                ie.printStackTrace();
+            }
+            if (connection.isInitiator() && !mGotStreamOpenedStanza) {
+                //throwConnectionExceptionOrNoResponse();
+            }
+        }
+
+        /**
+         * 
+         */
+        public void shutdown() {
+            // TODO Auto-generated method stub
+            
+        }
+
+        protected void handleStreamOpened(XmlPullParser parser) throws Exception {
+            //super.handleStreamOpened(parser);
+
+            // if we are the initiator, this means stream has been initiated
+            // if we aren't the initiator, this means we have to respond with
+            // stream initiator.
+            if (connection.isInitiator()) {
+                mGotStreamOpenedStanza = true;
+                //connection.connectionID = connection.getServiceName();
+                //releaseConnectionIDLock();
+            }
+            else {
+                // Check if service name is a known entity
+                // if it is, open the stream and keep it open
+                // otherwise open and immediately close it
+                if (connection.getServiceName() == null) {
+                    System.err.println("No service name specified in stream initiation, canceling.");
+                    shutdown();
+                } else {
+                    // Check if service name is known, if so
+                    // we will continue the session
+                    LLPresence presence = service.getPresenceByServiceName(connection.getServiceName());
+                    if (presence != null) {
+                        connection.setRemotePresence(presence);
+                        //connectionID = connection.getServiceName();
+                        connection.streamInitiatingReceived();
+                        //releaseConnectionIDLock();
+                    } else {
+                        System.err.println("Unknown service name '" +
+                                connection.getServiceName() +
+                                "' specified in stream initation, canceling.");
+                        shutdown();
+                    }
+                }
+            }
+        }
+    }
+
+    protected class LLStanzaWriter {
+
+
+        protected void openStream() throws IOException {
+            // Unlike traditional XMPP Stream initiation,
+            // we must provide our XEP-0174 Service Name
+            // in a "from" attribute
+            StringBuilder stream = new StringBuilder();
+            stream.append("<stream:stream");
+            stream.append(" to=\"").append(getServiceName()).append("\"");
+            if (initiator)
+                stream.append(" from=\"").append(((LLConnectionConfiguration) config).getLocalPresence().getServiceName()).append("\"");
+            else {
+                // TODO: We should be able to access the service name from the
+                // stream opening stanza that this is a response to.
+                String localServiceName = ((LLConnectionConfiguration) config).getLocalPresence().getJID();
+                localServiceName = localServiceName.substring(0, localServiceName.lastIndexOf("."));
+                stream.append(" from=\"").append(localServiceName).append("\"");
+            }
+            stream.append(" xmlns=\"jabber:client\"");
+            stream.append(" xmlns:stream=\"http://etherx.jabber.org/streams\"");
+            stream.append(" version=\"1.0\">");
+            writer.write(stream.toString());
+            writer.flush();
+        }
+
+        /**
+         * 
+         */
+        public void shutdown() {
+            // TODO Auto-generated method stub
+            
+        }
+
+        /**
+         * 
+         */
+        public void init() {
+            // TODO Auto-generated method stub
+            
+        }
+
+        /**
+         * 
+         */
+        public void startup() {
+            // TODO Auto-generated method stub
+            
+        }
+
+        /**
+         * @param element
+         */
+        public void sendStreamElement(Nonza element) {
+            // TODO Auto-generated method stub
+            
+        }
+
+        /**
+         * @param stanza
+         */
+        public void sendStreamElement(Stanza stanza) {
+            // TODO Auto-generated method stub
+            
+        }
+    }
 
 	@Override
 	public boolean isSecureConnection() {
@@ -511,7 +553,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
 	@Override
 	protected void sendStanzaInternal(Stanza stanza)
 			throws NotConnectedException {
-		// TODO Auto-generated method stub
+	    stanzaWriter.sendStreamElement(stanza);
 		
 	}
 
@@ -521,19 +563,12 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
 		return false;
 	}
 
-	@Override
-	protected void connectInternal() throws SmackException, IOException,
-			XMPPException {
-		// TODO Auto-generated method stub
-		
-	}
-    
     /* (non-Javadoc)
      * @see org.jivesoftware.smack.AbstractXMPPConnection#sendNonza(org.jivesoftware.smack.packet.Nonza)
      */
     @Override
     public void sendNonza(Nonza element) throws NotConnectedException, InterruptedException {
-        // TODO Auto-generated method stub
+        stanzaWriter.sendStreamElement(element);
         
     }
     

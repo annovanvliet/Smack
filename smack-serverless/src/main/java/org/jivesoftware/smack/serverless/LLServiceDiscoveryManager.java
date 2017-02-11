@@ -249,10 +249,11 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
      * Returns a new or already established connection to the given service name.
      *
      * @param serviceName remote service to which we wish to be connected to.
-     * @throws DNSException 
+     * @throws InterruptedException 
+     * @throws XMPPException 
      * @returns an established connection to the given service name.
      */
-    private XMPPLLConnection getConnection(Jid serviceName) throws XMPPException.XMPPErrorException, IOException, SmackException, DNSException {
+    private XMPPLLConnection getConnection(Jid serviceName) throws IOException, SmackException, XMPPException, InterruptedException {
         return service.getConnection(serviceName);
     }
 
@@ -261,10 +262,11 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
      * connection to the given service name.
      *
      * @param serviceName the name of the service we wish to get the ServiceDiscoveryManager instance for.
-     * @throws DNSException 
+     * @throws InterruptedException 
+     * @throws XMPPException 
      * @returns the ServiceDiscoveryManager instance.
      */
-    private ServiceDiscoveryManager getInstance(Jid serviceName) throws SmackException, IOException, XMPPException.XMPPErrorException, DNSException {
+    private ServiceDiscoveryManager getInstance(Jid serviceName) throws SmackException, IOException, XMPPException, InterruptedException {
         return ServiceDiscoveryManager.getInstanceFor(getConnection(serviceName));
     }
 

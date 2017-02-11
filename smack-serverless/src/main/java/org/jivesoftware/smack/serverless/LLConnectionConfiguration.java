@@ -28,6 +28,8 @@ import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.stringprep.XmppStringprepException;
 
 import javax.net.SocketFactory;
+
+import java.net.InetAddress;
 import java.net.Socket;
 
 /**
@@ -45,6 +47,7 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
      * Holds the socket factory that is used to generate the socket in the connection
      */
     private SocketFactory socketFactory;
+    private InetAddress inetAddress;
 
     /** 
      * Configuration used for connecting to remote peer.
@@ -57,6 +60,7 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
         this.localPresence = builder.localPresence;
         this.remotePresence = builder.remotePresence;
         this.socket = builder.socket;
+        this.inetAddress = builder.inetAddress;
     }
 
 //    /** 
@@ -141,6 +145,7 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
         private LLPresence remotePresence;
         private LLPresence localPresence;
         private Socket socket;
+        private InetAddress inetAddress;
 
         private Builder() {
             try {
@@ -191,6 +196,21 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
             this.socket = socket;
             return this;
         }
+        
+        /**
+         * @param inetAddress the inetAddress to set
+         */
+        public void setInetAddress(InetAddress inetAddress) {
+            this.inetAddress = inetAddress;
+        }
+    }
+
+    /**
+     * @return
+     */
+    public InetAddress getInetAddress() {
+        // TODO Auto-generated method stub
+        return inetAddress;
     }
 
 }
