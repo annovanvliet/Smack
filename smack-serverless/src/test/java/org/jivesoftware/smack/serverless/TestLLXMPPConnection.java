@@ -11,18 +11,26 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.swing.text.html.FormSubmitEvent;
+
 import org.jivesoftware.smack.AbstractXMPPConnection;
+import org.jivesoftware.smack.SmackConfiguration;
 import org.jivesoftware.smack.SmackException;
+import org.jivesoftware.smack.StanzaListener;
 import org.jivesoftware.smack.SmackException.NotConnectedException;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.chat2.Chat;
 import org.jivesoftware.smack.chat2.ChatManager;
+import org.jivesoftware.smack.filter.StanzaFilter;
 import org.jivesoftware.smack.packet.Presence;
+import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.packet.Presence.Type;
 import org.jivesoftware.smack.roster.Roster;
 import org.jivesoftware.smack.roster.RosterEntry;
 import org.jivesoftware.smack.serverless.LLConnectionConfiguration.Builder;
+import org.jivesoftware.smack.test.util.SmackTestSuite;
+import org.jivesoftware.smackx.MDNSListener;
 import org.jivesoftware.smackx.disco.ServiceDiscoveryManager;
 import org.jivesoftware.smackx.disco.packet.DiscoverInfo;
 import org.jxmpp.jid.EntityBareJid;
@@ -38,11 +46,13 @@ import org.jxmpp.stringprep.XmppStringprepException;
  * @author Anno van Vliet
  *
  */
-public class TestLLXMPPConnection {
+public class TestLLXMPPConnection extends SmackTestSuite {
     
     private static final Logger log = Logger.getLogger(TestLLXMPPConnection.class.getName());
     
     public static void main(String[] argv) {
+        
+        SmackConfiguration.DEBUG = true;
         
         TestLLXMPPConnection test = new TestLLXMPPConnection();
         
@@ -65,7 +75,7 @@ public class TestLLXMPPConnection {
     private boolean start() {
 
         try {
-            int rnd = new Random().nextInt(30);
+            int rnd = 1; //new Random().nextInt(30);
             
             // Create some kind of user name
             EntityJid name = JidCreate.entityBareFrom("smack-mdns@localhost");
@@ -84,13 +94,31 @@ public class TestLLXMPPConnection {
             
             connection = new XMPPSLConnection(config.build());
             
+            connection.addAsyncStanzaListener(new StanzaListener() {
+                
+                @Override
+                public void processStanza(Stanza packet) throws NotConnectedException, InterruptedException {
+                    log.info("stanzas received:" + packet.getFrom() + " " + packet.toXML());
+                    
+                }
+            }, new StanzaFilter() {
+                
+                @Override
+                public boolean accept(Stanza stanza) {
+                    // TODO Auto-generated method stub
+                    return true;
+                }
+            } );
 
             // Add hook for doing a clean shut down
             Runtime.getRuntime().addShutdownHook(new CloseDownService(connection));
 
             // Initiate Link-local message session
             connection.connect().login(name.getLocalpart().toString(), null);
+
+            connection.getDNSService().addPresenceListener(new MDNSListener());
             
+
             return true;
         }
         catch (XMPPException | SmackException | IOException | InterruptedException e) {

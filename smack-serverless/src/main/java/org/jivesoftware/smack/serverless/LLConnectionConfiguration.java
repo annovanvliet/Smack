@@ -18,19 +18,15 @@
 package org.jivesoftware.smack.serverless;
 
 
-import org.jivesoftware.smack.ConnectionConfiguration;
-import org.jivesoftware.smack.DummyConnection.DummyConnectionConfiguration;
-import org.jivesoftware.smack.DummyConnection.DummyConnectionConfiguration.Builder;
-import org.jivesoftware.smack.serverless.LLPresence;
-import org.jxmpp.jid.DomainBareJid;
-import org.jxmpp.jid.EntityJid;
-import org.jxmpp.jid.impl.JidCreate;
-import org.jxmpp.stringprep.XmppStringprepException;
+import java.net.InetAddress;
+import java.net.Socket;
 
 import javax.net.SocketFactory;
 
-import java.net.InetAddress;
-import java.net.Socket;
+import org.jivesoftware.smack.ConnectionConfiguration;
+import org.jxmpp.jid.DomainBareJid;
+import org.jxmpp.jid.impl.JidCreate;
+import org.jxmpp.stringprep.XmppStringprepException;
 
 /**
  * Link-local connection configuration settings. Two general cases exists,
@@ -92,22 +88,22 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
         return socket == null;
     }
 
-    /**
-     * Return the service name of the remote peer.
-     * @return the remote peer's service name.
-     */
-    public EntityJid getRemoteServiceName() {
-        return remotePresence.getServiceName();
-    }
-
-    /**
-     * Return the service name of this client.
-     * @return this clients service name.
-     */
-    public EntityJid getLocalServiceName() {
-        return localPresence.getServiceName();
-    } 
-
+//    /**
+//     * Return the service name of the remote peer.
+//     * @return the remote peer's service name.
+//     */
+//    public EntityJid getRemoteServiceName() {
+//        return remotePresence.getServiceName();
+//    }
+//
+//    /**
+//     * Return the service name of this client.
+//     * @return this clients service name.
+//     */
+//    public EntityJid getLocalServiceName() {
+//        return localPresence.getServiceName();
+//    } 
+//
     /**
      * Return this clients link-local presence information.
      * @return this clients link-local presence information.

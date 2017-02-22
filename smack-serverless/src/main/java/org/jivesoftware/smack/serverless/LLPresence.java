@@ -20,9 +20,7 @@ package org.jivesoftware.smack.serverless;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.jivesoftware.smackx.caps.CapsVersionAndHash;
 import org.jxmpp.jid.EntityJid;
-import org.jxmpp.jid.Jid;
 
 /**
  * Class for describing a Link-local presence information according to XEP-0174.

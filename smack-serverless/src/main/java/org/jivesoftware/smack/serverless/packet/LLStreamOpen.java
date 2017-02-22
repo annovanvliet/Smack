@@ -17,7 +17,6 @@
 package org.jivesoftware.smack.serverless.packet;
 
 import org.jivesoftware.smack.packet.StreamOpen;
-import org.jivesoftware.smack.util.XmlStringBuilder;
 
 public class LLStreamOpen extends StreamOpen {
 

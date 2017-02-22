@@ -17,26 +17,23 @@
 
 package org.jivesoftware.smack.serverless.service.jmdns;
 
-import org.jivesoftware.smack.XMPPException;
-import org.jivesoftware.smack.packet.XMPPError;
-import org.jivesoftware.smack.serverless.LLPresence;
-import org.jivesoftware.smack.serverless.service.LLPresenceDiscoverer;
-import org.jivesoftware.smackx.disco.ServiceDiscoveryManager;
-import org.jxmpp.jid.EntityJid;
-import org.jxmpp.jid.Jid;
-import org.jxmpp.jid.impl.JidCreate;
-import org.jxmpp.stringprep.XmppStringprepException;
+import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Logger;
 
 import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceListener;
 
-import java.io.UnsupportedEncodingException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.logging.Logger;
+import org.jivesoftware.smack.XMPPException;
+import org.jivesoftware.smack.serverless.LLPresence;
+import org.jivesoftware.smack.serverless.service.LLPresenceDiscoverer;
+import org.jxmpp.jid.EntityJid;
+import org.jxmpp.jid.impl.JidCreate;
+import org.jxmpp.stringprep.XmppStringprepException;
 
 
 /**
@@ -52,9 +49,9 @@ class JmDNSPresenceDiscoverer extends LLPresenceDiscoverer {
     protected static JmDNS jmdns;
 
     JmDNSPresenceDiscoverer() throws XMPPException {
-        jmdns = JmDNSService.jmdns;
-//        if (jmdns == null)
-//            throw new XMPPException.XMPPErrorException(new XMPPError(XMPPError.Condition.undefined_condition, "Failed to fully initiate mDNS daemon."));
+        jmdns = JmDNSService2.jmdns;
+        if (jmdns == null)
+            throw new DNSException( "Failed to fully initiate mDNS daemon.");
 
         jmdns.addServiceListener(JmDNSService.SERVICE_TYPE, new PresenceServiceListener());
     }
