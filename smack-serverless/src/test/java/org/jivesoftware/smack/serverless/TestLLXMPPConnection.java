@@ -6,26 +6,24 @@ package org.jivesoftware.smack.serverless;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.Random;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.swing.text.html.FormSubmitEvent;
-
 import org.jivesoftware.smack.AbstractXMPPConnection;
 import org.jivesoftware.smack.SmackConfiguration;
 import org.jivesoftware.smack.SmackException;
-import org.jivesoftware.smack.StanzaListener;
 import org.jivesoftware.smack.SmackException.NotConnectedException;
+import org.jivesoftware.smack.StanzaListener;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.chat2.Chat;
 import org.jivesoftware.smack.chat2.ChatManager;
 import org.jivesoftware.smack.filter.StanzaFilter;
+import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.packet.Presence;
-import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.packet.Presence.Type;
+import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.roster.Roster;
 import org.jivesoftware.smack.roster.RosterEntry;
 import org.jivesoftware.smack.serverless.LLConnectionConfiguration.Builder;
@@ -99,6 +97,10 @@ public class TestLLXMPPConnection extends SmackTestSuite {
                 @Override
                 public void processStanza(Stanza packet) throws NotConnectedException, InterruptedException {
                     log.info("stanzas received:" + packet.getFrom() + " " + packet.toXML());
+                    if ( packet instanceof Message ) {
+                        Message m = (Message)packet;
+                        System.out.println(m.getBody());
+                    }
                     
                 }
             }, new StanzaFilter() {
@@ -194,7 +196,11 @@ public class TestLLXMPPConnection extends SmackTestSuite {
                 catch (XMPPException xe) {
                     System.out.println("Caught XMPPException: " + xe);
                     xe.printStackTrace();
-                    //done = true;
+                    //done = true; 
+                }
+                catch (XmppStringprepException ioe) {
+                    System.out.println("Caught XmppStringprepException: " + ioe);
+                    ioe.printStackTrace();
                 }
                 catch (IOException ioe) {
                     System.out.println("Caught IOException: " + ioe);

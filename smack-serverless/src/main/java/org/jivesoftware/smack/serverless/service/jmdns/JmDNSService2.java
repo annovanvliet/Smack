@@ -79,7 +79,7 @@ public class JmDNSService2 extends SLService implements ServiceListener {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() throws IOException, InterruptedException {
         super.close();
         jmdns.close();
     }

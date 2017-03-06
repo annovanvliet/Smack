@@ -24,8 +24,6 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -33,7 +31,6 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.AttributeKey;
-import io.netty.util.concurrent.GlobalEventExecutor;
 
 /**
  * @author anno
@@ -56,8 +53,11 @@ public abstract class SLService {
     private LLPresenceDiscoverer presenceDiscoverer;
     private final EventLoopGroup bossGroup;
     private final EventLoopGroup workerGroup;
-    private final ChannelGroup channels;
+    
     private XMPPSLConnection xmppslConnection;
+
+
+    private Channel serverChannel;
     
     
     protected SLService(LLPresence presence, LLPresenceDiscoverer discoverer) {
@@ -67,9 +67,6 @@ public abstract class SLService {
         bossGroup = new NioEventLoopGroup(1);
         workerGroup = new NioEventLoopGroup();
         
-        channels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
-        
-
     }
 
     /**
@@ -85,7 +82,9 @@ public abstract class SLService {
 
 
     
-    public void init(XMPPSLConnection connection) throws XMPPException, InterruptedException {
+    public Channel init(XMPPSLConnection connection) throws XMPPException, InterruptedException {
+        LOGGER.fine("init");
+
         // allocate a new port for remote clients to connect to
         int socketPort = bindRange(DEFAULT_MIN_PORT, DEFAULT_MAX_PORT);
         presence.setPort(socketPort);
@@ -95,26 +94,33 @@ public abstract class SLService {
         registerService();
         
         ServerBootstrap b = new ServerBootstrap();
-        b.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class).handler(
-                        new LoggingHandler(LogLevel.TRACE)).childHandler(new ChannelInitializer<SocketChannel>() { // (4)
-                            @Override
-                            public void initChannel(SocketChannel ch) throws Exception {
-                                
-                                LOGGER.fine("initChannel:" + ch);
-                                
-                                ChannelPipeline pipeline = ch.pipeline();
-                                
-                                pipeline.addLast("xmpp-parser", new XMLFrameDecoder( xmppslConnection ));
-                                pipeline.addLast("xmppDecoder", new XmppStanzaDecoder());
-                                pipeline.addLast("nonzaDecoder", new XmppNonzaDecoder());
-                                
-                                
-                            }
-                        });
+        b.group(bossGroup, workerGroup);
+        b.handler(new LoggingHandler(LogLevel.TRACE));
+        b.channel(NioServerSocketChannel.class);
+        b.childHandler(
+             new ChannelInitializer<SocketChannel>() { // (4)
+                @Override
+                public void initChannel(SocketChannel ch) throws Exception {
+                    
+                    LOGGER.fine("initChannel:" + ch);
+                    
+                    ChannelPipeline pipeline = ch.pipeline();
+                    
+                    pipeline.addLast("xmpp-parser", new XMLFrameDecoder( xmppslConnection ));
+                    pipeline.addLast("xmppDecoder", new XmppStanzaDecoder());
+                    pipeline.addLast("nonzaDecoder", new XmppNonzaDecoder());
+                    
+                    
+                }
+            });
+        b.option(ChannelOption.SO_BACKLOG, 128);          // (5)
+        b.childOption(ChannelOption.SO_KEEPALIVE, true); // (6)
 
-        Channel channel = b.bind(socketPort).sync().channel();
-        LOGGER.fine("init:" + channel);
+
+        serverChannel = b.bind(socketPort).sync().channel();
+        LOGGER.fine("init:" + serverChannel);
         
+        return serverChannel;
         //f.closeFuture().sync()
 
     }
@@ -128,12 +134,13 @@ public abstract class SLService {
      * @throws SmackException 
      * @throws DNSException 
      */
-    private Channel createNewOutgoingChannel(Jid to) throws InterruptedException, NotConnectedException {
-        LOGGER.fine("createNewOutgoingChannel:" + to);
+    public void createNewOutgoingChannel( final LLStream remoteStream ) throws InterruptedException, NotConnectedException {
+        
+        LOGGER.fine("createNewOutgoingChannel");
         // If no connection exists, look up the presence and connect according to.
-        final LLPresence remotePresence = getPresenceByServiceName(to);
+        //final  = getPresenceByServiceName(to);
 
-        if (remotePresence == null) {
+        if (remoteStream == null) {
             throw  new NotConnectedException("Can't initiate connection, remote peer is not available.");
         }
 
@@ -146,28 +153,23 @@ public abstract class SLService {
             @Override
             public void initChannel(SocketChannel ch) throws Exception {
                 ChannelPipeline pipeline = ch.pipeline();
-                pipeline.addLast("xmpp-parsero", new XMLFrameDecoder( xmppslConnection, remotePresence) );
+                pipeline.addLast("xmpp-parsero", new XMLFrameDecoder( xmppslConnection, remoteStream) );
                 pipeline.addLast("nonzaDecoder", new XmppNonzaDecoder());
                 pipeline.addLast("xmppDecodero", new XmppStanzaDecoder());
             }
         });
 
         // Start the client.
-        Channel channel = b.connect(remotePresence.getHost(), remotePresence.getPort()).sync().channel(); // (5)
+        Channel channel = b.connect(remoteStream.getRemotePresence().getHost(), remoteStream.getRemotePresence().getPort()).sync().channel(); // (5)
 
-        addChannel(to, channel);
+        remoteStream.setChannel(channel);
         
-        channel.flush();
-        
-        return channel;
     }
 
-
-
     
-    
-    
-    public void close() throws IOException {
+    public void close() throws IOException, InterruptedException {
+        
+        serverChannel.close().sync();
         bossGroup.shutdownGracefully();
         workerGroup.shutdownGracefully();
     }
@@ -246,26 +248,7 @@ public abstract class SLService {
         Thread.currentThread().getThreadGroup().list();
     }
 
-
-    /**
-     * @param to
-     * @return
-     * @throws InterruptedException 
-     * @throws NotConnectedException 
-     * @throws SmackException 
-     */
-    public Channel getChannel(Jid to) throws InterruptedException, NotConnectedException {
-        LOGGER.fine("getChannel:" + to);
-        for (Channel channel : channels) {
-            if ( to.equals(channel.attr(JID_KEY).get()) )
-                return channel;
-        }
-
-        return createNewOutgoingChannel(to);
-        
-    }
-
-    
+   
     /**
      * Get the presence information associated with the given service name.
      *
@@ -274,19 +257,6 @@ public abstract class SLService {
      */
     public LLPresence getPresenceByServiceName(Jid serviceName) {
         return presenceDiscoverer.getPresence(serviceName);
-    }
-
-    /**
-     * @param jid
-     * @param channel
-     */
-    public void addChannel(Jid jid, Channel channel) {
-        LOGGER.fine("addChannel:" + jid);
-        
-        channel.attr(SLService.JID_KEY).set(jid);
-        channels.add(channel);
-
-        
     }
 
 }

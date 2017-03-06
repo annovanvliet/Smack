@@ -21,32 +21,29 @@ public class XMLFrameDecoder extends ChannelInboundHandlerAdapter {
 
     private static final Logger log = Logger.getLogger(XMLFrameDecoder.class.getName());
 
-    private XMPPReader reader;
+    //private XMPPReader reader;
     private PipedInputStream sink;
     private PipedOutputStream source;
-    private final boolean outgoing;
 
     private final XMPPSLConnection xmppslConnection;
 
-    private final LLPresence remotePresence;
+    private final LLStream stream;
 
     public XMLFrameDecoder( XMPPSLConnection xmppslConnection ) {
 
         log.info("init");
         this.xmppslConnection = xmppslConnection;
-        this.remotePresence = null;
-        this.outgoing = false;
+        this.stream = null;
     }
 
     /**
      * @param xmppslConnection2
      * @param remotePresence
      */
-    public XMLFrameDecoder(XMPPSLConnection connection, LLPresence remotePresence) {
+    public XMLFrameDecoder(XMPPSLConnection connection, LLStream outgoingstream) {
         log.info("init");
         this.xmppslConnection = connection;
-        this.remotePresence = remotePresence;
-        this.outgoing = true;
+        this.stream = outgoingstream;
     }
 
     /* (non-Javadoc)
@@ -59,15 +56,26 @@ public class XMLFrameDecoder extends ChannelInboundHandlerAdapter {
         sink = new PipedInputStream();
         source = new PipedOutputStream(sink);
         
-        if ( outgoing ) {
-            reader = xmppslConnection.createOutgoingXMPPReader(ctx.channel(), remotePresence);
+        XMPPReader reader;
+        if ( stream != null ) {
+            reader = stream.getReader();
+            
+            if( reader == null) {
+                reader = xmppslConnection.createOutgoingXMPPReader(stream);
+                reader.setInput(ctx.channel(), sink, true);
+                reader.init();
+                stream.setReader(reader);
+            } else {
+                reader.setInput(ctx.channel(), sink, true);
+            }
+            
+            
         } else {
-            reader = xmppslConnection.createIncomingXMPPReader(ctx.channel());
+            reader = xmppslConnection.createIncomingXMPPReader();
+            reader.setInput(ctx.channel(), sink, false);
+            reader.init();
+            
         }
-        
-        reader.setInput(sink);
-        
-        reader.init();
         
         // TODO Auto-generated method stub
         super.channelActive(ctx);

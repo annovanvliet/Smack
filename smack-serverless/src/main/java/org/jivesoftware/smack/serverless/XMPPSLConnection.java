@@ -5,11 +5,15 @@ package org.jivesoftware.smack.serverless;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.jivesoftware.smack.AbstractXMPPConnection;
 import org.jivesoftware.smack.SmackException;
+import org.jivesoftware.smack.SynchronizationPoint;
+import org.jivesoftware.smack.SmackException.NoResponseException;
 import org.jivesoftware.smack.SmackException.NotConnectedException;
 import org.jivesoftware.smack.SmackException.SecurityRequiredException;
 import org.jivesoftware.smack.XMPPConnection;
@@ -32,7 +36,6 @@ import org.jivesoftware.smack.util.Async;
 import org.jivesoftware.smack.util.PacketParserUtils;
 import org.jxmpp.jid.DomainBareJid;
 import org.jxmpp.jid.EntityBareJid;
-import org.jxmpp.jid.EntityFullJid;
 import org.jxmpp.jid.Jid;
 import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.jid.parts.Resourcepart;
@@ -41,7 +44,6 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
 import io.netty.channel.Channel;
-import io.netty.channel.socket.SocketChannel;
 
 /**
  * @author anno
@@ -55,6 +57,8 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
     private final LLConnectionConfiguration configuration;
 
     private DomainBareJid serviceDomain;
+
+    private Map<Jid, LLStream> streams = new TreeMap<>();
 
     /**
      * @param build
@@ -83,8 +87,11 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
         LOGGER.fine("sendStanzaInternal " + packet );
         
         if ( packet.getTo() != null ) {
-            Channel ch = service.getChannel( packet.getTo() );
-            ch.writeAndFlush(packet);
+            
+            LLStream stream = getStreamByJid(packet.getTo());
+            if ( stream != null ) {
+                stream.send(packet);
+            }
             
             if (packet != null) {
                 firePacketSendingListeners(packet);
@@ -119,6 +126,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
      */
     @Override
     protected void connectInternal() throws SmackException, IOException, XMPPException, InterruptedException {
+        LOGGER.fine("connectInternal");
 
         // Start Service
 
@@ -175,7 +183,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
             try {
                 service.close();
             }
-            catch (IOException e) {
+            catch (IOException | InterruptedException e) {
                 LOGGER.log(Level.FINE, "Service close not succesfull", e);
             }
         }
@@ -239,69 +247,45 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
         callConnectionClosedOnErrorListener(e);
     }
 
-
-    /**
-     * Resets the parser using the latest connection's reader. Reseting the parser is necessary
-     * when the plain connection has been secured or when a new opening stream element is going
-     * to be sent by the server.
-     *
-     * @throws SmackException if the parser could not be reset.
-     * @throws InterruptedException 
-     * @throws NotConnectedException 
-     */
-    void openStream(Channel channel, CharSequence to, CharSequence from) throws InterruptedException, NotConnectedException {
-        // If possible, provide the receiving entity of the stream open tag, i.e. the server, as much information as
-        // possible. The 'to' attribute is *always* available. The 'from' attribute if set by the user and no external
-        // mechanism is used to determine the local entity (user). And the 'id' attribute is available after the first
-        // response from the server (see e.g. RFC 6120 § 9.1.1 Step 2.)
-//        CharSequence to = getXMPPServiceDomain();
-//        CharSequence from = null;
-//        CharSequence localpart = config.getUsername();
-//        if (localpart != null) {
-//            from = XmppStringUtils.completeJidFrom(localpart, to);
-//        }
-        
-        channel.writeAndFlush(new StreamOpen(to, from, null));
-        
-
-//        try {
-//            packetReader.parser = PacketParserUtils.newXmppParser(reader);
-//        }
-//        catch (XmlPullParserException e) {
-//            throw new SmackException(e);
-//        }
-    }
-
-
-
     
     class PacketReader implements XMPPReader {
+        
+        /**
+         * Set to success if the last features stanza from the server has been parsed. A XMPP connection
+         * handshake can invoke multiple features stanzas, e.g. when TLS is activated a second feature
+         * stanza is send by the server. This is set to true once the last feature stanza has been
+         * parsed.
+         */
+        protected final SynchronizationPoint<InterruptedException> lastStreamFeaturesReceived = new SynchronizationPoint<InterruptedException>(
+                        XMPPSLConnection.this, "last stream features received from server");
+
 
         XmlPullParser parser;
 
         volatile boolean done;
 
-        private final Channel channel;
-        private LLPresence remotePresence;
-        private final boolean outgoing;
-        
+        private Channel channel = null;
+        private LLStream stream = null;
+        private Boolean outgoing = null;
+
+        private boolean queueWasShutdown = false; //packetWriter.queue.isShutdown();
+
         /**
          * @param ch
          */
-        public PacketReader(Channel ch, LLPresence remotePresence, boolean outgoing ) {
-            this.channel = ch;
-            this.remotePresence = remotePresence;
-            this.outgoing = outgoing;
-            
-
+        public PacketReader(LLStream stream ) {
+            this.stream = stream;
+            lastStreamFeaturesReceived.init();
         }
 
         /* (non-Javadoc)
          * @see org.jivesoftware.smack.serverless.XMPPReader#setInput(java.io.InputStream)
          */
         @Override
-        public void setInput(InputStream stream) throws SmackException {
+        public void setInput(Channel channel, InputStream stream, boolean outgoing ) throws SmackException {
             
+            this.channel = channel;
+            this.outgoing = outgoing;
             try {
                 parser = PacketParserUtils.newXmppParser();
                 parser.setInput(stream, "UTF-8");
@@ -311,25 +295,17 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
             }
             
         }
-        
-        public void openStream() {
-            LOGGER.fine("openStream" );
-
-            StreamOpen stream = new StreamOpen(remotePresence.getServiceName(), getMe(), null);
-            
-            channel.writeAndFlush(stream);
-        }
-
-        /**
-         * @param streamOpen
+ 
+        /* (non-Javadoc)
+         * @see org.jivesoftware.smack.serverless.XMPPReader#waitStreamOpened()
          */
-        public void sendNonzaToChannel(Nonza packet) {
-            LOGGER.fine("sendNonzaToChannel" + packet );
-
-            channel.writeAndFlush(packet);
+        @Override
+        public void waitStreamOpened() throws InterruptedException, NoResponseException {
+            // TODO Auto-generated method stub
+            lastStreamFeaturesReceived.checkIfSuccessOrWait();
             
         }
-
+ 
         /**
          * Initializes the reader in order to be used. The reader is initialized during the
          * first connection and when reconnecting due to an abruptly disconnection.
@@ -342,10 +318,6 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
                     parsePackets();
                 }
             }, "Smack Packet Reader (" + getConnectionCounter() + ")");
-
-            if ( outgoing ) {
-                openStream();
-            }
 
          }
 
@@ -406,13 +378,15 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
                             throw new StreamErrorException(streamError);
                         case "features":
                             parseFeatures(parser);
+                            
+                            lastStreamFeaturesReceived.reportSuccess();
                             break;
                         case "proceed":
                             try {
                                 // Secure the connection by negotiating TLS
                                 // TODO proceedTLSReceived();
                                 // Send a new opening stream to the server
-                                openStream();
+                                stream.openStream();
                             }
                             catch (Exception e) {
                                 SmackException smackException = new SmackException(e);
@@ -452,7 +426,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
                             Success success = new Success(parser.nextText());
                             // We now need to bind a resource for the connection
                             // Open a new stream and wait for the response
-                            openStream();
+                            stream.openStream();
                             // The SASL authentication with the server was successful. The next step
                             // will be to bind the resource
                             getSASLAuthentication().authenticated(success);
@@ -463,7 +437,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
                             // Initialize the reader and writer with the new compressed version
                             initReaderAndWriter();
                             // Send a new opening stream to the server
-                            openStream();
+                            stream.openStream();
                             // Notify that compression is being used
 //                            compressSyncPoint.reportSuccess();
                             break;
@@ -560,13 +534,16 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
                             // received. This avoids a race if there is a disconnect(), followed by a connect(), which
                             // did re-start the queue again, causing this writer to assume that the queue is not
                             // shutdown, which results in a call to disconnect().
-                            final boolean queueWasShutdown = false; //packetWriter.queue.isShutdown();
+                            //final boolean queueWasShutdown = false; //packetWriter.queue.isShutdown();
 //                            closingStreamReceived.reportSuccess();
 
                             if (queueWasShutdown) {
                                 // We received a closing stream element *after* we initiated the
                                 // termination of the session by sending a closing stream element to
                                 // the server first
+                                
+                                //We can now close the channel
+                                channel.close();
                                 return;
                             } else {
                                 // We received a closing stream element from the server without us
@@ -576,7 +553,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
                                 LOGGER.info(this
                                                 + " received closing </stream> element."
                                                 + " Server wants to terminate the connection, calling disconnect()");
-                                disconnect();
+                                disconnectStream();
                             }
                         }
                         break;
@@ -594,36 +571,69 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
                 // The exception can be ignored if the the connection is 'done'
                 // or if the it was caused because the socket got closed
                 if (!(done  
-//                         || packetWriter.queue.isShutdown()
+                         || !channel.isActive() 
                                 )) {
                     // Close the connection and notify connection listeners of the
                     // error.
                     notifyConnectionError(e);
                 }
             }
+            finally {
+                if (stream != null) {
+                    stream.closeChannel();
+                } else {
+                    if (channel != null)
+                        channel.close();
+                }
+            }
+        }
+
+        /**
+         * 
+         */
+        public void disconnectStream() {
+            
+            channel.writeAndFlush("</stream:stream>");
+            queueWasShutdown = true;
+            
         }
 
         /**
          * @param fromAddress
          * @throws XmppStringprepException 
+         * @throws InterruptedException 
+         * @throws SmackException 
+         * @throws NoResponseException 
          */
-        private void streamInitiatingReceived(String fromAddress) throws XmppStringprepException {
+        private void streamInitiatingReceived(String fromAddress) throws XmppStringprepException, InterruptedException, NoResponseException, SmackException {
             LOGGER.fine("streamInitiatingReceived:" + fromAddress);
             Jid jid = JidCreate.from(fromAddress);
-            LLPresence presence = service.getPresenceByServiceName(jid);
-            if (presence != null) {
-                remotePresence = presence;
-                //releaseConnectionIDLock();
-                
-                service.addChannel(jid, channel);
-                
-                openStream();
-                
-            } else {
+            
+            LLStream stream = streams.get(jid);
+
+            if ( stream == null ) {
+                LLPresence presence = service.getPresenceByServiceName(jid);
+                if (presence != null) {
+
+                    stream = new LLStreamImpl(XMPPSLConnection.this, presence);
+                    
+                    streams.put(jid, stream);
+                }
+            }
+            
+            if ( stream == null ) {
                 LOGGER.warning("Unknown service name '" +
                                 fromAddress +
                                 "' specified in stream initation, canceling.");
                 shutdown();
+            } else {
+                
+                stream.setReader(this);
+                stream.setChannel(channel);
+                
+                stream.openStream();
+                stream.sendFeatures();
+                
             }
         }
     }
@@ -636,15 +646,53 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
      * @param outgoing 
      * @return
      */
-    public XMPPReader createOutgoingXMPPReader(Channel ch, LLPresence partner ) {
+    public XMPPReader createOutgoingXMPPReader(LLStream partner ) {
         
-        return new PacketReader( ch, partner, true );
+        return new PacketReader(partner);
         
     }
     
-    public XMPPReader createIncomingXMPPReader(Channel ch ) {
+    public XMPPReader createIncomingXMPPReader() {
+    
+        return new PacketReader(null);
+    }
 
-        return new PacketReader( ch, null, false );
+    /**
+     * @param jid
+     * @return
+     * @throws InterruptedException 
+     * @throws NotConnectedException 
+     * @throws SmackException 
+     * @throws NoResponseException 
+     */
+    public LLStream getStreamByJid(Jid jid) throws InterruptedException, NotConnectedException {
+        
+        LLStream stream = streams.get(jid);
+
+        if ( stream != null ) {
+            return stream;                
+        }
+
+        LLPresence presence = service.getPresenceByServiceName(jid);
+        if (presence != null) {
+
+            stream = new LLStreamImpl(this, presence);
+            
+            service.createNewOutgoingChannel(stream);
+            
+            streams.put(jid, stream);
+            
+            try {
+                stream.openOutgoingStream();
+            }
+            catch (NoResponseException e) {
+                LOGGER.log(Level.WARNING, "Cannot open Stream" , e );
+                throw new NotConnectedException();
+            }
+            
+        }
+
+        return stream;
     }
 
     /**
@@ -660,6 +708,23 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
      */
     public SLService getDNSService() {
         return service;
+    }
+
+    /**
+     * Setup an outgoing stream
+     * 
+     * @param channel
+     * @param to 
+     */
+    public void setUpStream(Channel channel, Jid to) {
+        
+        StreamOpen stream = new StreamOpen(to, getMe(), null);
+        
+        channel.writeAndFlush(stream);
+        
+        // add listener to the answer
+
+        
     }
     
     
