@@ -237,7 +237,10 @@ public class TestLLXMPPConnection extends SmackTestSuite {
     /**
      * @param connection
      */
-    private void spam(XMPPConnection connection) {
+    private void spam(XMPPSLConnection connection) {
+
+        connection.spam();
+        connection.getDNSService().spam();
         
         // get Roster cq. all locally known users
         log.info("get Roster:");

@@ -21,19 +21,26 @@ import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.XMPPException.StreamErrorException;
 import org.jivesoftware.smack.compress.packet.Compressed;
 import org.jivesoftware.smack.packet.IQ;
+import org.jivesoftware.smack.packet.Mechanisms;
 import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.packet.Nonza;
 import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.packet.StreamError;
 import org.jivesoftware.smack.packet.StreamOpen;
+import org.jivesoftware.smack.packet.Presence.Type;
+import org.jivesoftware.smack.roster.Roster;
 import org.jivesoftware.smack.sasl.packet.SaslStreamElements;
 import org.jivesoftware.smack.sasl.packet.SaslStreamElements.Challenge;
 import org.jivesoftware.smack.sasl.packet.SaslStreamElements.SASLFailure;
 import org.jivesoftware.smack.sasl.packet.SaslStreamElements.Success;
+import org.jivesoftware.smack.serverless.service.LLPresenceListener;
 import org.jivesoftware.smack.serverless.service.jmdns.JmDNSService2;
 import org.jivesoftware.smack.util.Async;
 import org.jivesoftware.smack.util.PacketParserUtils;
+import org.jivesoftware.smackx.caps.CapsVersionAndHash;
+import org.jivesoftware.smackx.caps.EntityCapsManager;
+import org.jivesoftware.smackx.disco.packet.DiscoverInfo;
 import org.jxmpp.jid.DomainBareJid;
 import org.jxmpp.jid.EntityBareJid;
 import org.jxmpp.jid.Jid;
@@ -60,6 +67,10 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
 
     private Map<Jid, LLStream> streams = new TreeMap<>();
 
+    private EntityCapsManager capsManager;
+
+    private LLPresenceListener myPresenceListener = new MyPresenceListener();
+
     /**
      * @param build
      */
@@ -67,7 +78,11 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
         super(configuration);
         
         this.configuration = configuration;
-        
+
+        // Entity Capabilities
+        capsManager = EntityCapsManager.getInstanceFor(this);
+        EntityCapsManager.addCapsVerListener(new CapsPresenceRenewer());
+
     }
 
     /* (non-Javadoc)
@@ -129,12 +144,18 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
         LOGGER.fine("connectInternal");
 
         // Start Service
+        capsManager.updateLocalEntityCaps();
 
         // Create a basic presence (only set name, and status to available)
         service = JmDNSService2.create( configuration.getLocalPresence(), configuration.getInetAddress());
         
         service.init(this);
 
+        // Add presence listener. The presence listener will gather
+        // entity caps data
+        service.addPresenceListener( myPresenceListener );
+
+        
         tlsHandled.reportSuccess();
         saslFeatureReceived.reportSuccess();
         
@@ -169,6 +190,11 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
     @Override
     protected void afterFeaturesReceived()
                     throws SecurityRequiredException, NotConnectedException, InterruptedException {
+        
+        if (hasFeature(DiscoverInfo.ELEMENT, DiscoverInfo.NAMESPACE)) {
+            
+        }
+        
         LOGGER.fine("afterFeaturesReceived" );
     }
     
@@ -726,6 +752,73 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
 
         
     }
+
+    private class CapsPresenceRenewer implements EntityCapsManager.CapsVerListener {
+        
+        public void capsVerUpdated(CapsVersionAndHash ver) {
+            try {
+                LLPresence presence = configuration.getLocalPresence();
+                presence.setHash(EntityCapsManager.DEFAULT_HASH);
+                presence.setNode(capsManager.getEntityNode());
+                presence.setVer(ver.version);
+                if ( service != null )
+                    service.updateLocalPresence(presence);
+            }
+            catch (XMPPException xe) {
+                LOGGER.log(Level.INFO, "not able to udate local presence", xe);
+            }
+        }
+    }
+
+    private class MyPresenceListener implements LLPresenceListener {
+        
+        public void presenceNew(LLPresence presence) {
+            if (presence.getHash() != null &&
+                presence.getNode() != null &&
+                presence.getVer() != null) {
+                // Add presence to caps manager
+                capsManager.addUserCapsNode(presence.getServiceName(),
+                    presence.getNode(), presence.getVer());
+            }
+            
+            //simulate the reception of a presence update
+            Presence packet = presence.getPresenceStanza();
+            
+            try {
+                processStanza(packet);
+            }
+            catch (InterruptedException e) {
+                LOGGER.log(Level.INFO, "process Presence", e);
+            }
+            
+        }
+
+        public void presenceRemove(LLPresence presence) {
+            //simulate the reception of a presence update
+            Presence packet = new Presence(Type.unavailable);
+            packet.setFrom(presence.getServiceName());
+            
+            try {
+                processStanza(packet);
+            }
+            catch (InterruptedException e) {
+                LOGGER.log(Level.INFO, "process Presence", e);
+            }
+        }
+    }
     
+    
+    /**
+     * 
+     */
+    public void spam() {
+        
+        // Dump some state
+        LOGGER.info("Local presence:" + configuration.getLocalPresence().getServiceName());
+        LOGGER.info("serviceDomain:" + serviceDomain);
+        LOGGER.info("streams:" + streams.size());
+        
+    }
+
     
 }

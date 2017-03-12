@@ -209,6 +209,11 @@ public abstract class SLService {
      */
     protected abstract void reannounceService() throws XMPPException;
 
+    /**
+     * Update the text field information. Used for setting new presence information.
+     */
+    protected abstract void updateText();
+
     protected void serviceNameChanged(EntityJid newName, EntityJid oldName) {
         // update our own presence with the new name, for future connections
         presence.setServiceName(newName);
@@ -233,13 +238,6 @@ public abstract class SLService {
      * Spam stdout with some debug information.
      */
     public void spam() {
-        //System.out.println("Number of ingoing connection in map: " + ingoing.size());
-        //System.out.println("Number of outgoing connection in map: " + outgoing.size());
-
-        System.out.println("Active chats:");
-//        for (LLChat chat : chats.values()) {
-//            System.out.println(" * " + chat.getServiceName());
-//        }
 
         System.out.println("Known presences:");
         for (LLPresence presence : presenceDiscoverer.getPresences()) {
@@ -258,5 +256,23 @@ public abstract class SLService {
     public LLPresence getPresenceByServiceName(Jid serviceName) {
         return presenceDiscoverer.getPresence(serviceName);
     }
+    
+    /**
+     * Update the presence information announced by the mDNS/DNS-SD daemon.
+     * The presence object stored in the LLService class will be updated
+     * with the new information and the daemon will reannounce the changes.
+     *
+     * @param presence the new presence information
+     * @throws XMPPException if an error occurs
+     */
+    public void updateLocalPresence(LLPresence presence) throws XMPPException {
+//        this.presence.update(presence);
+
+        //if (initiated) {
+            updateText();
+            reannounceService();
+        //}
+    }
+
 
 }

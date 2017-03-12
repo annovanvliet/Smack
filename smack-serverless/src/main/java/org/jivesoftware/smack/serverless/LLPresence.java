@@ -20,6 +20,8 @@ package org.jivesoftware.smack.serverless;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.jivesoftware.smack.packet.Presence;
+import org.jivesoftware.smack.packet.Presence.Type;
 import org.jxmpp.jid.EntityJid;
 
 /**
@@ -284,5 +286,37 @@ public class LLPresence {
 
     public int hashCode() {
         return serviceName.hashCode();
+    }
+
+    
+    
+    /**
+     * @return
+     */
+    public Presence getPresenceStanza() {
+        
+        Presence stanza = new Presence(Type.available, getMsg(), 0, convertStatus( getStatus()));
+        
+        stanza.setFrom(serviceName);
+        return stanza;
+    }
+
+    /**
+     * @param status2
+     * @return
+     */
+    private org.jivesoftware.smack.packet.Presence.Mode convertStatus(Mode statusMode) {
+        
+        switch (statusMode) {
+        case avail:
+            return org.jivesoftware.smack.packet.Presence.Mode.available;
+        case away:
+            return org.jivesoftware.smack.packet.Presence.Mode.away;
+        case dnd:
+            return org.jivesoftware.smack.packet.Presence.Mode.dnd;
+        default:
+            break;
+        }
+        return org.jivesoftware.smack.packet.Presence.Mode.available;
     }
 }

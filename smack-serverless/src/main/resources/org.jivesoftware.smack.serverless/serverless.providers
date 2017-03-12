@@ -1,0 +1,11 @@
+<?xml version="1.0"?> 
+<smackProviders>
+
+    <!-- XEP-0174: Disco#info as a stream feature -->
+    <streamFeatureProvider>
+        <elementName>query</elementName>
+        <namespace>http://jabber.org/protocol/disco#info</namespace>
+        <className>org.jivesoftware.smackx.disco.provider.DiscoverInfoProvider</className>
+    </streamFeatureProvider>
+
+</smackProviders>

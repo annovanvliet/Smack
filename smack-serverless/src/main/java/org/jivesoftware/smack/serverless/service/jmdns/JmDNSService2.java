@@ -41,22 +41,13 @@ import org.jxmpp.jid.impl.JidCreate;
  *
  * @author Jonas Ådahl
  */
-public class JmDNSService2 extends SLService implements ServiceListener {
+public class JmDNSService2 extends SLService {
     static JmDNS jmdns = null;
     private ServiceInfo serviceInfo;
     static final String SERVICE_TYPE = "_presence._tcp.local.";
 
     private JmDNSService2(LLPresence presence, LLPresenceDiscoverer presenceDiscoverer) {
         super(presence, presenceDiscoverer);
-    }
-
-    /**
-     * Instantiate a new JmDNSService and start to listen for connections.
-     *
-     * @param presence the mDNS presence information that should be used.
-     */
-    public static SLService create(LLPresence presence) throws XMPPException {
-        return create(presence, null);
     }
 
     /**
@@ -113,7 +104,7 @@ public class JmDNSService2 extends SLService implements ServiceListener {
     protected void registerService() throws XMPPException {
         serviceInfo = ServiceInfo.create(SERVICE_TYPE,
                 presence.getServiceName().toString(), presence.getPort(), 0, 0, presence.toMap());
-        jmdns.addServiceListener(SERVICE_TYPE, this);
+        
         try {
             EntityJid originalServiceName = JidCreate.entityBareFrom( serviceInfo.getName());
             jmdns.registerService(serviceInfo);
@@ -174,43 +165,6 @@ public class JmDNSService2 extends SLService implements ServiceListener {
         System.out.println("Service name: " + serviceInfo.getName());
     }
 
-    /** vv {@link javax.jmdns.ServiceListener} vv **/
-
-    @Override
-    public void serviceAdded(ServiceEvent event) {
-        // Calling super.serviceNameChanged changes
-        // the current local presence to that of the
-        // newly added Service.
-        // How can we assume that a new Service added
-        // corresponds to the local service name changing?
-        // This logic is currently executed when a new client joins
-        // changing the local presence and confusing our chat logic
-        // We could perhaps consider services added at the same host
-        // address to be name changes... But that also opens the
-        // door to undesired behavior when DHCP leases expire
-        // and local addresses are recycled
-
-        // What's wrong with treating new services as new services?
-        // From my reading of XEP-0174, I don't see any reason why
-        // a client should change their service name.
-
-//        System.out.println("Service added " + event.getName());
-//        if (!presence.getServiceName().equals(event.getName())) {
-//            super.serviceNameChanged(event.getName(), presence.getServiceName());
-//        }
-    }
-
-    @Override
-    public void serviceRemoved(ServiceEvent event) {
-
-    }
-
-    @Override
-    public void serviceResolved(ServiceEvent event) {
-
-    }
-
-    /** ^^ {@link javax.jmdns.ServiceListener} ^^ **/
 
     /**
      * JmDNS may change the name of a requested service to enforce uniqueness
