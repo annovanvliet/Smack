@@ -5,6 +5,8 @@ package org.jivesoftware.smack.serverless;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Reader;
+import java.io.Writer;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.logging.Level;
@@ -12,24 +14,23 @@ import java.util.logging.Logger;
 
 import org.jivesoftware.smack.AbstractXMPPConnection;
 import org.jivesoftware.smack.SmackException;
-import org.jivesoftware.smack.SynchronizationPoint;
 import org.jivesoftware.smack.SmackException.NoResponseException;
 import org.jivesoftware.smack.SmackException.NotConnectedException;
 import org.jivesoftware.smack.SmackException.SecurityRequiredException;
+import org.jivesoftware.smack.SynchronizationPoint;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.XMPPException.StreamErrorException;
 import org.jivesoftware.smack.compress.packet.Compressed;
 import org.jivesoftware.smack.packet.IQ;
-import org.jivesoftware.smack.packet.Mechanisms;
+import org.jivesoftware.smack.packet.IQ.Type;
 import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.packet.Nonza;
 import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.packet.StreamError;
 import org.jivesoftware.smack.packet.StreamOpen;
-import org.jivesoftware.smack.packet.Presence.Type;
-import org.jivesoftware.smack.roster.Roster;
+import org.jivesoftware.smack.roster.packet.RosterPacket;
 import org.jivesoftware.smack.sasl.packet.SaslStreamElements;
 import org.jivesoftware.smack.sasl.packet.SaslStreamElements.Challenge;
 import org.jivesoftware.smack.sasl.packet.SaslStreamElements.SASLFailure;
@@ -58,10 +59,11 @@ import io.netty.channel.Channel;
  */
 public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConnection {
 
-    private static final Logger LOGGER = Logger.getLogger(XMPPSLConnection.class.getName());
+    private static final Logger logger = Logger.getLogger(XMPPSLConnection.class.getName());
 
     private SLService service;
     private final LLConnectionConfiguration configuration;
+    private final LLPresence localPresence;
 
     private DomainBareJid serviceDomain;
 
@@ -78,11 +80,21 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
         super(configuration);
         
         this.configuration = configuration;
+        this.localPresence = configuration.getLocalPresence();
 
         // Entity Capabilities
         capsManager = EntityCapsManager.getInstanceFor(this);
         EntityCapsManager.addCapsVerListener(new CapsPresenceRenewer());
 
+    }
+
+    /* (non-Javadoc)
+     * @see org.jivesoftware.smack.AbstractXMPPConnection#getXMPPServiceDomain()
+     */
+    @Override
+    public DomainBareJid getXMPPServiceDomain() {
+        // TODO Auto-generated method stub
+        return serviceDomain;
     }
 
     /* (non-Javadoc)
@@ -95,39 +107,6 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
     }
 
     /* (non-Javadoc)
-     * @see org.jivesoftware.smack.AbstractXMPPConnection#sendStanzaInternal(org.jivesoftware.smack.packet.Stanza)
-     */
-    @Override
-    protected void sendStanzaInternal(Stanza packet) throws InterruptedException, NotConnectedException {
-        LOGGER.fine("sendStanzaInternal " + packet );
-        
-        if ( packet.getTo() != null ) {
-            
-            LLStream stream = getStreamByJid(packet.getTo());
-            if ( stream != null ) {
-                stream.send(packet);
-            }
-            
-            if (packet != null) {
-                firePacketSendingListeners(packet);
-            }
-        } else {
-            LOGGER.info("no addressee for " + packet );
-        }
-        
-        
-    }
-
-    /* (non-Javadoc)
-     * @see org.jivesoftware.smack.AbstractXMPPConnection#sendNonza(org.jivesoftware.smack.packet.Nonza)
-     */
-    @Override
-    public void sendNonza(Nonza element) throws NotConnectedException, InterruptedException {
-        LOGGER.info("no addressee for " + element );
-
-    }
-
-    /* (non-Javadoc)
      * @see org.jivesoftware.smack.AbstractXMPPConnection#isUsingCompression()
      */
     @Override
@@ -136,20 +115,25 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
         return false;
     }
 
+   
     /* (non-Javadoc)
      * @see org.jivesoftware.smack.AbstractXMPPConnection#connectInternal()
      */
     @Override
     protected void connectInternal() throws SmackException, IOException, XMPPException, InterruptedException {
-        LOGGER.fine("connectInternal");
+        logger.fine("connectInternal");
 
+        initDebugPipe();
+        
         // Start Service
         capsManager.updateLocalEntityCaps();
 
         // Create a basic presence (only set name, and status to available)
-        service = JmDNSService2.create( configuration.getLocalPresence(), configuration.getInetAddress());
+        service = JmDNSService2.create( localPresence, configuration.getInetAddress(), this);
         
-        service.init(this);
+        service.prepareBind(localPresence);
+        
+        service.startServerSocket(localPresence.getPort());
 
         // Add presence listener. The presence listener will gather
         // entity caps data
@@ -159,19 +143,49 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
         tlsHandled.reportSuccess();
         saslFeatureReceived.reportSuccess();
         
-        EntityBareJid jid = JidCreate.entityBareFrom(configuration.getLocalPresence().getServiceName());
+        EntityBareJid jid = JidCreate.entityBareFrom(localPresence.getServiceName());
         user = JidCreate.entityFullFrom(jid, Resourcepart.from("local"));
         serviceDomain = user.asDomainBareJid();
 
     }
     
-    /* (non-Javadoc)
-     * @see org.jivesoftware.smack.AbstractXMPPConnection#getXMPPServiceDomain()
+    /**
+     * 
      */
-    @Override
-    public DomainBareJid getXMPPServiceDomain() {
-        // TODO Auto-generated method stub
-        return serviceDomain;
+    private void initDebugPipe() {
+      logger.finest("initDebugPipe");
+
+      reader = new Reader() {
+        
+        @Override
+        public int read(char[] cbuf, int off, int len) throws IOException {
+          return ( len < cbuf.length - off ? len : cbuf.length - off);
+        }
+        
+        @Override
+        public void close() throws IOException {
+          
+        }
+      };
+      
+      writer = new Writer(){
+
+        @Override
+        public void write(char[] cbuf, int off, int len) throws IOException {
+        }
+
+        @Override
+        public void flush() throws IOException {
+        }
+
+        @Override
+        public void close() throws IOException {
+        }
+        
+      };
+
+      initDebugger();
+      
     }
 
     /* (non-Javadoc)
@@ -181,6 +195,16 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
     protected void loginInternal(String username, String password, Resourcepart resource)
                     throws XMPPException, SmackException, IOException, InterruptedException {
 
+        EntityBareJid realizedServiceName = service.registerService(localPresence);
+    	
+        JidCreate.entityBareFrom(localPresence.getServiceName());
+        
+        localPresence.setServiceName(realizedServiceName);
+
+        user = JidCreate.entityFullFrom(realizedServiceName, Resourcepart.from("local"));
+        serviceDomain = user.asDomainBareJid();
+
+        afterSuccessfulLogin(false);
 
     }
 
@@ -195,7 +219,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
             
         }
         
-        LOGGER.fine("afterFeaturesReceived" );
+        logger.fine("afterFeaturesReceived" );
     }
     
     /* (non-Javadoc)
@@ -203,19 +227,87 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
      */
     @Override
     protected void shutdown() {
-        LOGGER.fine("shutdown" );
+        logger.fine("shutdown" );
 
         if ( service != null ) {
             try {
                 service.close();
             }
             catch (IOException | InterruptedException e) {
-                LOGGER.log(Level.FINE, "Service close not succesfull", e);
+                logger.log(Level.FINE, "Service close not succesfull", e);
             }
         }
 
     }
 
+    /* (non-Javadoc)
+     * @see org.jivesoftware.smack.AbstractXMPPConnection#sendStanzaInternal(org.jivesoftware.smack.packet.Stanza)
+     */
+    @Override
+    protected void sendStanzaInternal(Stanza packet) throws InterruptedException, NotConnectedException {
+        logger.fine("sendStanzaInternal " + packet );
+        
+        if ( packet.getTo() != null ) {
+
+            //TODO if IQ request and no support for disco force answer
+
+            LLStream stream = getStreamByJid(packet.getTo());
+            if ( stream != null ) {
+              
+                stream.send(packet);
+            } else {
+              logger.warning("no stream found for " + packet.getTo() );
+            }
+            
+            firePacketSendingListeners(packet);
+            
+        } else if ( packet instanceof Presence ) {
+          
+          try {
+            Presence pres = (Presence)packet;
+            
+            localPresence.setStatus(LLPresence.convertStatus(pres.getMode()));
+            localPresence.setMsg(pres.getStatus());
+            
+            service.updateLocalPresence(localPresence);
+            
+          } catch (XMPPException e) {
+            logger.warning("Presence update not succesfull:" + e.getMessage());
+            logger.log(Level.FINER, "", e);
+            
+          }
+          
+        } else if ( packet instanceof RosterPacket ) {
+          
+          RosterPacket req = (RosterPacket)packet;
+          RosterPacket response = new RosterPacket();
+          response.setStanzaId( req.getStanzaId() );
+          response.setType(Type.result);
+          for ( LLPresence pres : service.getPresences() ) {
+            response.addRosterItem(new RosterPacket.Item(pres.getServiceName(), pres.getName()));
+          }
+
+          processStanza(response);
+          
+          
+        } else {
+            logger.info("no addressee for " + packet );
+        }
+        
+        
+    }
+
+    /* (non-Javadoc)
+     * @see org.jivesoftware.smack.AbstractXMPPConnection#sendNonza(org.jivesoftware.smack.packet.Nonza)
+     */
+    @Override
+    public void sendNonza(Nonza element) throws NotConnectedException, InterruptedException {
+        logger.info("no addressee for " + element );
+
+    }
+
+
+    
 //    private final SynchronizationPoint<Exception> initalOpenStreamSend = new SynchronizationPoint<>(
 //                    this, "initial open stream element send to server");
 //
@@ -283,7 +375,10 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
          * parsed.
          */
         protected final SynchronizationPoint<InterruptedException> lastStreamFeaturesReceived = new SynchronizationPoint<InterruptedException>(
-                        XMPPSLConnection.this, "last stream features received from server");
+                        XMPPSLConnection.this, "last stream features received from remote");
+
+        protected final SynchronizationPoint<InterruptedException> streamOpenConfirmed = new SynchronizationPoint<InterruptedException>(
+            XMPPSLConnection.this, "Stream open confirmed");
 
 
         XmlPullParser parser;
@@ -295,12 +390,17 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
         private Boolean outgoing = null;
 
         private boolean queueWasShutdown = false; //packetWriter.queue.isShutdown();
+        /**
+         * two flavors of stream open, with or without version='1.0'
+         */
+        private boolean streamVersion1 = false;
 
         /**
          * @param ch
          */
         public PacketReader(LLStream stream ) {
             this.stream = stream;
+            streamOpenConfirmed.init();
             lastStreamFeaturesReceived.init();
         }
 
@@ -328,7 +428,11 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
         @Override
         public void waitStreamOpened() throws InterruptedException, NoResponseException {
             // TODO Auto-generated method stub
+          streamOpenConfirmed.checkIfSuccessOrWait();
+          
+          if ( streamVersion1 ) {
             lastStreamFeaturesReceived.checkIfSuccessOrWait();
+          }
             
         }
  
@@ -367,7 +471,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
                     switch (eventType) {
                     case XmlPullParser.START_TAG:
                         final String name = parser.getName();
-                        LOGGER.fine("start_tag:" + name);
+                        logger.fine("start_tag:" + name);
                         
                         switch (name) {
                         case Message.ELEMENT:
@@ -384,11 +488,16 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
                             if ("jabber:client".equals(parser.getNamespace(null))) {
                                 streamId = parser.getAttributeValue("", "id");
                                 String fromAddress = parser.getAttributeValue("", "from");
-                                
-                                LOGGER.fine("stream from:" + fromAddress );
+                                String version = parser.getAttributeValue("", "version");
+                                streamVersion1 = (version != null && version.equals("1.0")); 
+                                logger.fine("stream from:" + fromAddress );
                                 
                                 if ( !outgoing ) {
+                                  
                                     streamInitiatingReceived(fromAddress);
+                                } else {
+                                  
+                                  streamOpenConfirmed.reportSuccess();
                                 }
                                 
                                 //assert(config.getXMPPServiceDomain().equals(reportedServerDomain));
@@ -484,7 +593,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
 //                            clientHandledStanzasCount = 0;
 //                            smWasEnabledAtLeastOnce = true;
 //                            smEnabledSyncPoint.reportSuccess();
-//                            LOGGER.fine("Stream Management (XEP-198): succesfully enabled");
+//                            logger.fine("Stream Management (XEP-198): succesfully enabled");
 //                            break;
 //                        case Failed.ELEMENT:
 //                            Failed failed = ParseStreamManagement.failed(parser);
@@ -529,7 +638,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
 //                            if (!stanzasToResend.isEmpty()) {
 //                                requestSmAcknowledgementInternal();
 //                            }
-//                            LOGGER.fine("Stream Management (XEP-198): Stream resumed");
+//                            logger.fine("Stream Management (XEP-198): Stream resumed");
 //                            break;
 //                        case AckAnswer.ELEMENT:
 //                            AckAnswer ackAnswer = ParseStreamManagement.ackAnswer(parser);
@@ -540,19 +649,19 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
 //                            if (smEnabledSyncPoint.wasSuccessful()) {
 //                                sendSmAcknowledgementInternal();
 //                            } else {
-//                                LOGGER.warning("SM Ack Request received while SM is not enabled");
+//                                logger.warning("SM Ack Request received while SM is not enabled");
 //                            }
 //                            break;
                          default:
-                             LOGGER.warning("Unknown top level stream element: " + name);
+                             logger.warning("Unknown top level stream element: " + name);
                              break;
                         }
                         break;
                     case XmlPullParser.END_TAG:
-                        LOGGER.fine("end_tag:" + parser.getName());
+                        logger.fine("end_tag:" + parser.getName());
                         if (parser.getName().equals("stream")) {
                             if (!parser.getNamespace().equals("http://etherx.jabber.org/streams")) {
-                                LOGGER.warning(this +  " </stream> but different namespace " + parser.getNamespace());
+                                logger.warning(this +  " </stream> but different namespace " + parser.getNamespace());
                                 break;
                             }
 
@@ -576,7 +685,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
                                 // sending a closing stream element first. This means that the
                                 // server wants to terminate the session, therefore disconnect
                                 // the connection
-                                LOGGER.info(this
+                                logger.info(this
                                                 + " received closing </stream> element."
                                                 + " Server wants to terminate the connection, calling disconnect()");
                                 disconnectStream();
@@ -626,13 +735,14 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
 
         /**
          * @param fromAddress
+         * @param streamVersion1 
          * @throws XmppStringprepException 
          * @throws InterruptedException 
          * @throws SmackException 
          * @throws NoResponseException 
          */
         private void streamInitiatingReceived(String fromAddress) throws XmppStringprepException, InterruptedException, NoResponseException, SmackException {
-            LOGGER.fine("streamInitiatingReceived:" + fromAddress);
+            logger.fine("streamInitiatingReceived:" + fromAddress);
             Jid jid = JidCreate.from(fromAddress);
             
             LLStream stream = streams.get(jid);
@@ -648,7 +758,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
             }
             
             if ( stream == null ) {
-                LOGGER.warning("Unknown service name '" +
+                logger.warning("Unknown service name '" +
                                 fromAddress +
                                 "' specified in stream initation, canceling.");
                 shutdown();
@@ -658,7 +768,8 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
                 stream.setChannel(channel);
                 
                 stream.openStream();
-                stream.sendFeatures();
+                if ( streamVersion1 )
+                  stream.sendFeatures();
                 
             }
         }
@@ -712,7 +823,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
                 stream.openOutgoingStream();
             }
             catch (NoResponseException e) {
-                LOGGER.log(Level.WARNING, "Cannot open Stream" , e );
+                logger.log(Level.WARNING, "Cannot open Stream" , e );
                 throw new NotConnectedException();
             }
             
@@ -726,7 +837,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
      */
     public CharSequence getMe() {
         
-        return configuration.getLocalPresence().getServiceName();
+        return localPresence.getServiceName();
     }
 
     /**
@@ -757,7 +868,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
         
         public void capsVerUpdated(CapsVersionAndHash ver) {
             try {
-                LLPresence presence = configuration.getLocalPresence();
+                LLPresence presence = localPresence;
                 presence.setHash(EntityCapsManager.DEFAULT_HASH);
                 presence.setNode(capsManager.getEntityNode());
                 presence.setVer(ver.version);
@@ -765,7 +876,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
                     service.updateLocalPresence(presence);
             }
             catch (XMPPException xe) {
-                LOGGER.log(Level.INFO, "not able to udate local presence", xe);
+                logger.log(Level.INFO, "not able to udate local presence", xe);
             }
         }
     }
@@ -788,21 +899,21 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
                 processStanza(packet);
             }
             catch (InterruptedException e) {
-                LOGGER.log(Level.INFO, "process Presence", e);
+                logger.log(Level.INFO, "process Presence", e);
             }
             
         }
 
         public void presenceRemove(LLPresence presence) {
             //simulate the reception of a presence update
-            Presence packet = new Presence(Type.unavailable);
+            Presence packet = new Presence(org.jivesoftware.smack.packet.Presence.Type.unavailable);
             packet.setFrom(presence.getServiceName());
             
             try {
                 processStanza(packet);
             }
             catch (InterruptedException e) {
-                LOGGER.log(Level.INFO, "process Presence", e);
+                logger.log(Level.INFO, "process Presence", e);
             }
         }
     }
@@ -814,10 +925,24 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
     public void spam() {
         
         // Dump some state
-        LOGGER.info("Local presence:" + configuration.getLocalPresence().getServiceName());
-        LOGGER.info("serviceDomain:" + serviceDomain);
-        LOGGER.info("streams:" + streams.size());
+        logger.info("Local presence:" + localPresence.getServiceName());
+        logger.info("serviceDomain:" + serviceDomain);
+        logger.info("streams:" + streams.size());
         
+    }
+
+    /**
+     * @return
+     */
+    public Writer getDebugWriter() {
+      return writer;
+    }
+
+    /**
+     * @return
+     */
+    public Reader getDebugReader() {
+      return reader;
     }
 
     

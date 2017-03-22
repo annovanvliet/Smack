@@ -88,14 +88,13 @@ public class XMLFrameDecoder extends ChannelInboundHandlerAdapter {
      */
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        log.info("channelRead:" + msg);
+        log.info("channelRead");
         
         ByteBuf in = (ByteBuf) msg;
         try {
             while (in.isReadable()) { // (1)
                 int kar = in.readByte();
                 source.write(kar);
-                System.out.print((char) kar);
             }
             source.flush();
         } finally {

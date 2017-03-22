@@ -5,6 +5,7 @@ package org.jivesoftware.smack.serverless;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.util.Collection;
 import java.util.logging.Logger;
 
 import org.jivesoftware.smack.SmackConfiguration;
@@ -14,7 +15,7 @@ import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.serverless.service.LLPresenceDiscoverer;
 import org.jivesoftware.smack.serverless.service.LLPresenceListener;
 import org.jivesoftware.smack.serverless.service.jmdns.DNSException;
-import org.jxmpp.jid.EntityJid;
+import org.jxmpp.jid.EntityBareJid;
 import org.jxmpp.jid.Jid;
 
 import io.netty.bootstrap.Bootstrap;
@@ -38,7 +39,7 @@ import io.netty.util.AttributeKey;
  */
 public abstract class SLService {
     
-    private static final Logger LOGGER = Logger.getLogger(SLService.class.getName());
+    private static final Logger logger = Logger.getLogger(SLService.class.getName());
 
 
     static final int DEFAULT_MIN_PORT = 2300;
@@ -49,20 +50,21 @@ public abstract class SLService {
         SmackConfiguration.getVersion();
     }
 
-    protected LLPresence presence;
+    //protected LLPresence presence;
     private LLPresenceDiscoverer presenceDiscoverer;
     private final EventLoopGroup bossGroup;
     private final EventLoopGroup workerGroup;
     
-    private XMPPSLConnection xmppslConnection;
+    private final XMPPSLConnection xmppslConnection;
 
 
     private Channel serverChannel;
     
     
-    protected SLService(LLPresence presence, LLPresenceDiscoverer discoverer) {
-        this.presence = presence;
+    protected SLService(LLPresence presence, LLPresenceDiscoverer discoverer, XMPPSLConnection connection) {
+        //this.presence = presence;
         this.presenceDiscoverer = discoverer;
+        this.xmppslConnection = connection;
         
         bossGroup = new NioEventLoopGroup(1);
         workerGroup = new NioEventLoopGroup();
@@ -79,20 +81,17 @@ public abstract class SLService {
         presenceDiscoverer.addPresenceListener(listener);
     }
 
-
-
-    
-    public Channel init(XMPPSLConnection connection) throws XMPPException, InterruptedException {
-        LOGGER.fine("init");
+    public void prepareBind(LLPresence presence) throws XMPPException {
+        logger.fine("init");
 
         // allocate a new port for remote clients to connect to
         int socketPort = bindRange(DEFAULT_MIN_PORT, DEFAULT_MAX_PORT);
         presence.setPort(socketPort);
-        this.xmppslConnection = connection;
 
-        // register service on the allocated port
-        registerService();
-        
+    }
+
+    public Channel startServerSocket( int socketPort) throws InterruptedException {
+
         ServerBootstrap b = new ServerBootstrap();
         b.group(bossGroup, workerGroup);
         b.handler(new LoggingHandler(LogLevel.TRACE));
@@ -102,10 +101,11 @@ public abstract class SLService {
                 @Override
                 public void initChannel(SocketChannel ch) throws Exception {
                     
-                    LOGGER.fine("initChannel:" + ch);
+                    logger.fine("initChannel:" + ch);
                     
                     ChannelPipeline pipeline = ch.pipeline();
-                    
+                    pipeline.addLast("xmpp-debugger-in", new SmackDebugInboundHandler( xmppslConnection ));
+                    pipeline.addLast("xmpp-debugger-out", new SmackDebugOutboundHandler( xmppslConnection ));
                     pipeline.addLast("xmpp-parser", new XMLFrameDecoder( xmppslConnection ));
                     pipeline.addLast("xmppDecoder", new XmppStanzaDecoder());
                     pipeline.addLast("nonzaDecoder", new XmppNonzaDecoder());
@@ -118,7 +118,7 @@ public abstract class SLService {
 
 
         serverChannel = b.bind(socketPort).sync().channel();
-        LOGGER.fine("init:" + serverChannel);
+        logger.fine("init:" + serverChannel);
         
         return serverChannel;
         //f.closeFuture().sync()
@@ -136,7 +136,7 @@ public abstract class SLService {
      */
     public void createNewOutgoingChannel( final LLStream remoteStream ) throws InterruptedException, NotConnectedException {
         
-        LOGGER.fine("createNewOutgoingChannel");
+        logger.fine("createNewOutgoingChannel");
         // If no connection exists, look up the presence and connect according to.
         //final  = getPresenceByServiceName(to);
 
@@ -153,6 +153,8 @@ public abstract class SLService {
             @Override
             public void initChannel(SocketChannel ch) throws Exception {
                 ChannelPipeline pipeline = ch.pipeline();
+                pipeline.addLast("xmpp-debugger-in", new SmackDebugInboundHandler( xmppslConnection ));
+                pipeline.addLast("xmpp-debugger-out", new SmackDebugOutboundHandler( xmppslConnection ));
                 pipeline.addLast("xmpp-parsero", new XMLFrameDecoder( xmppslConnection, remoteStream) );
                 pipeline.addLast("nonzaDecoder", new XmppNonzaDecoder());
                 pipeline.addLast("xmppDecodero", new XmppStanzaDecoder());
@@ -201,8 +203,9 @@ public abstract class SLService {
     /**
      * Registers the service to the mDNS/DNS-SD daemon.
      * Should be implemented by the class extending this, for mDNS/DNS-SD library specific calls.
+     * @return 
      */
-    protected abstract void registerService() throws XMPPException;
+    protected abstract EntityBareJid registerService(LLPresence presence) throws XMPPException;
 
     /**
      * Re-announce the presence information by using the mDNS/DNS-SD daemon.
@@ -212,26 +215,7 @@ public abstract class SLService {
     /**
      * Update the text field information. Used for setting new presence information.
      */
-    protected abstract void updateText();
-
-    protected void serviceNameChanged(EntityJid newName, EntityJid oldName) {
-        // update our own presence with the new name, for future connections
-        presence.setServiceName(newName);
-
-        // clean up connections
-//        XMPPLLConnection c;
-//        c = getConnectionTo(oldName);
-//        if (c != null)
-//            c.disconnect();
-//        c = getConnectionTo(newName);
-//        if (c != null)
-//            c.disconnect();
-//
-//        // notify listeners
-//        for (LLServiceStateListener listener : stateListeners) {
-//            listener.serviceNameChanged(newName, oldName);
-//        }
-    }
+    protected abstract void updateText(LLPresence presence);
 
     
     /**
@@ -239,9 +223,9 @@ public abstract class SLService {
      */
     public void spam() {
 
-        System.out.println("Known presences:");
+        logger.info("Known presences:");
         for (LLPresence presence : presenceDiscoverer.getPresences()) {
-            System.out.println(" * " + presence.getServiceName() + "(" + presence.getStatus() + ", " + presence.getHost() + ":" + presence.getPort() + ")");
+            logger.info(" * " + presence.getServiceName() + "(" + presence.getStatus() + ", " + presence.getHost() + ":" + presence.getPort() + ")");
         }
         Thread.currentThread().getThreadGroup().list();
     }
@@ -269,9 +253,17 @@ public abstract class SLService {
 //        this.presence.update(presence);
 
         //if (initiated) {
-            updateText();
+            updateText(presence);
             reannounceService();
         //}
+    }
+
+    /**
+     * @return
+     */
+    public Collection<LLPresence> getPresences() {
+      logger.finest("getPresences");
+      return presenceDiscoverer.getPresences();
     }
 
 

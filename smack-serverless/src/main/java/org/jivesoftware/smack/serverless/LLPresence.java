@@ -22,7 +22,7 @@ import java.util.Map;
 
 import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.packet.Presence.Type;
-import org.jxmpp.jid.EntityJid;
+import org.jxmpp.jid.BareJid;
 
 /**
  * Class for describing a Link-local presence information according to XEP-0174.
@@ -71,19 +71,19 @@ public class LLPresence {
     // Host details
     private int port = 0;
     private String host;
-    private EntityJid serviceName;
+    private BareJid serviceName;
 
-    public LLPresence(EntityJid serviceName) {
+    public LLPresence(BareJid serviceName) {
         this.serviceName = serviceName;
     }
 
-    public LLPresence(EntityJid serviceName, String host, int port) {
+    public LLPresence(BareJid serviceName, String host, int port) {
         this.serviceName = serviceName;
         this.host = host;
         this.port = port;
     }
 
-    public LLPresence(EntityJid serviceName, String host, int port,
+    public LLPresence(BareJid serviceName, String host, int port,
             Map<String,String> records) {
         this(serviceName, host, port);
 
@@ -162,7 +162,7 @@ public class LLPresence {
         setJID(p.getJID());
     }
 
-    public void setServiceName(EntityJid serviceName) {
+    public void setServiceName(BareJid serviceName) {
         this.serviceName = serviceName;
     }
 
@@ -218,6 +218,28 @@ public class LLPresence {
         return lastName;
     }
 
+    /**
+     * @return a display name
+     */
+    public String getName() {
+      StringBuilder sb = new StringBuilder();
+      if ( firstName != null )
+         sb.append(firstName);
+      if ( sb.length() > 0 )
+        sb.append(" ");
+      if ( lastName != null )
+        sb.append(lastName);
+      if ( sb.length() == 0 )
+        if ( jid != null )
+          sb.append(jid);
+      if ( sb.length() == 0 )
+        if ( serviceName != null )
+          sb.append(serviceName);
+      
+      return sb.toString();
+    }
+
+    
     public String getEMail() {
         return email;
     }
@@ -238,7 +260,7 @@ public class LLPresence {
         return jid;
     }
 
-    public EntityJid getServiceName() {
+    public BareJid getServiceName() {
         return serviceName;
     }
 
@@ -305,7 +327,7 @@ public class LLPresence {
      * @param status2
      * @return
      */
-    private org.jivesoftware.smack.packet.Presence.Mode convertStatus(Mode statusMode) {
+    public static org.jivesoftware.smack.packet.Presence.Mode convertStatus(Mode statusMode) {
         
         switch (statusMode) {
         case avail:
@@ -319,4 +341,24 @@ public class LLPresence {
         }
         return org.jivesoftware.smack.packet.Presence.Mode.available;
     }
+
+    /**
+     * @param status2
+     * @return
+     */
+    public static Mode convertStatus(org.jivesoftware.smack.packet.Presence.Mode statusMode) {
+        
+        switch (statusMode) {
+        case available:
+            return Mode.avail;
+        case away:
+            return Mode.away;
+        case dnd:
+            return Mode.dnd;
+        default:
+            break;
+        }
+        return Mode.avail;
+    }
+
 }

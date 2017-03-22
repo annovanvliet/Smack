@@ -40,7 +40,6 @@ import org.jivesoftware.smack.serverless.service.jmdns.JmDNSService;
 import org.jivesoftware.smack.test.util.SmackTestSuite;
 import org.jivesoftware.smackx.disco.packet.DiscoverInfo;
 import org.jxmpp.jid.EntityBareJid;
-import org.jxmpp.jid.EntityJid;
 import org.jxmpp.jid.Jid;
 import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.stringprep.XmppStringprepException;
@@ -75,7 +74,7 @@ public class TestMDNS extends SmackTestSuite {
             int rnd = new Random().nextInt(30);
             
             // Create some kind of user name
-            EntityJid name = JidCreate.entityBareFrom("smack-mdns@localhost");
+            EntityBareJid name = JidCreate.entityBareFrom("smack-mdns@localhost");
             try {   /// System.getenv("USERNAME")
                 name = JidCreate.entityBareFrom( "Tester" + rnd + "@" + java.net.InetAddress.getLocalHost().getHostName());
             } catch (Exception e) {}

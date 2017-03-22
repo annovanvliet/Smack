@@ -67,10 +67,11 @@ public class LLStreamImpl extends LLStreamModel implements LLStream {
     public void send(Stanza packet) {
         LOGGER.fine("send" );
         
-        if ( getChannel() != null ) {
-            getChannel().writeAndFlush(packet);
+        if ( getChannel() == null ) {
+          new NotConnectedException("No Channel");
         } else {
-            new NotConnectedException("No Channel");
+
+            getChannel().writeAndFlush(packet);
         }
         
     }

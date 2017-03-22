@@ -32,7 +32,7 @@ import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.serverless.LLPresence;
 import org.jivesoftware.smack.serverless.LLService;
 import org.jivesoftware.smack.serverless.service.LLPresenceDiscoverer;
-import org.jxmpp.jid.EntityJid;
+import org.jxmpp.jid.EntityBareJid;
 import org.jxmpp.jid.impl.JidCreate;
 
 /**
@@ -114,9 +114,9 @@ public class JmDNSService extends LLService implements ServiceListener {
                 presence.getServiceName().toString(), presence.getPort(), 0, 0, presence.toMap());
         jmdns.addServiceListener(SERVICE_TYPE, this);
         try {
-            EntityJid originalServiceName = JidCreate.entityBareFrom( serviceInfo.getName());
+            EntityBareJid originalServiceName = JidCreate.entityBareFrom( serviceInfo.getName());
             jmdns.registerService(serviceInfo);
-            EntityJid realizedServiceName = JidCreate.entityBareFrom( getRealizedServiceName(serviceInfo));
+            EntityBareJid realizedServiceName = JidCreate.entityBareFrom( getRealizedServiceName(serviceInfo));
             presence.setServiceName(realizedServiceName);
 
             if (!originalServiceName.equals(realizedServiceName)) {
@@ -149,7 +149,7 @@ public class JmDNSService extends LLService implements ServiceListener {
         }
     }
 
-    public void serviceNameChanged(EntityJid newName, EntityJid oldName) {
+    public void serviceNameChanged(EntityBareJid newName, EntityBareJid oldName) {
         try {
             super.serviceNameChanged(newName, oldName);
         }

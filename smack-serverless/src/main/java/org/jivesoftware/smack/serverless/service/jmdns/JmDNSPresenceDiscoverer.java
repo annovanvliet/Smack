@@ -31,7 +31,7 @@ import javax.jmdns.ServiceListener;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.serverless.LLPresence;
 import org.jivesoftware.smack.serverless.service.LLPresenceDiscoverer;
-import org.jxmpp.jid.EntityJid;
+import org.jxmpp.jid.EntityBareJid;
 import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.stringprep.XmppStringprepException;
 
@@ -102,6 +102,8 @@ class JmDNSPresenceDiscoverer extends LLPresenceDiscoverer {
                 records.put(record[0], record[1]);
             }
         }
+        
+        LOGGER.fine("TXT:" + records);
         return records;
     }
 
@@ -129,7 +131,7 @@ class JmDNSPresenceDiscoverer extends LLPresenceDiscoverer {
         public void serviceResolved(ServiceEvent event) {
             
             try {
-                EntityJid jid = JidCreate.entityBareFrom(event.getName());
+                EntityBareJid jid = JidCreate.entityBareFrom(event.getName());
                 presenceInfoAdded( jid ,
                         new LLPresence(jid,
                             event.getInfo().getHostAddress(), event.getInfo().getPort(),

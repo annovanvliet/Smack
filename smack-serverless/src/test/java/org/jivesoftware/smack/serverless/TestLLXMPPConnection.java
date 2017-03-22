@@ -32,7 +32,6 @@ import org.jivesoftware.smackx.MDNSListener;
 import org.jivesoftware.smackx.disco.ServiceDiscoveryManager;
 import org.jivesoftware.smackx.disco.packet.DiscoverInfo;
 import org.jxmpp.jid.EntityBareJid;
-import org.jxmpp.jid.EntityJid;
 import org.jxmpp.jid.Jid;
 import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.stringprep.XmppStringprepException;
@@ -62,6 +61,7 @@ public class TestLLXMPPConnection extends SmackTestSuite {
     }
 
     private XMPPSLConnection connection;
+    private Roster roster;
 
     /**
      * @throws InterruptedException 
@@ -76,7 +76,7 @@ public class TestLLXMPPConnection extends SmackTestSuite {
             int rnd = 1; //new Random().nextInt(30);
             
             // Create some kind of user name
-            EntityJid name = JidCreate.entityBareFrom("smack-mdns@localhost");
+            EntityBareJid name = JidCreate.entityBareFrom("smack-mdns@localhost");
             try {   /// System.getenv("USERNAME")
                 name = JidCreate.entityBareFrom( "Tester" + rnd + "@" + java.net.InetAddress.getLocalHost().getHostName());
             } catch (Exception e) {}
@@ -99,7 +99,7 @@ public class TestLLXMPPConnection extends SmackTestSuite {
                     log.info("stanzas received:" + packet.getFrom() + " " + packet.toXML());
                     if ( packet instanceof Message ) {
                         Message m = (Message)packet;
-                        System.out.println(m.getBody());
+                        System.out.println("A Message received from " + m.getFrom() + " - " + m.getBody());
                     }
                     
                 }
@@ -115,6 +115,8 @@ public class TestLLXMPPConnection extends SmackTestSuite {
             // Add hook for doing a clean shut down
             Runtime.getRuntime().addShutdownHook(new CloseDownService(connection));
 
+            roster = Roster.getInstanceFor(connection);
+            
             // Initiate Link-local message session
             connection.connect().login(name.getLocalpart().toString(), null);
 
@@ -243,12 +245,15 @@ public class TestLLXMPPConnection extends SmackTestSuite {
         connection.getDNSService().spam();
         
         // get Roster cq. all locally known users
-        log.info("get Roster:");
-        
-        Roster roster = Roster.getInstanceFor(connection); 
         Set<RosterEntry> list = roster.getEntries();
-        for (RosterEntry rosterEntry : list) {
-            log.info(" " + rosterEntry.getName() + " " + rosterEntry.toString());
+        if ( list.size() > 0 ) {
+          log.info("get Roster:");
+        
+          for (RosterEntry rosterEntry : list) {
+            log.info("Roster entry: " + rosterEntry.toString() + " " + roster.getPresence(rosterEntry.getJid()));
+          }
+        } else {
+          log.info("Empty roster");
         }
         
     }

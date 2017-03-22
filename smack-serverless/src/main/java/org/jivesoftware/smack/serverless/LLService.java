@@ -57,7 +57,6 @@ import org.jivesoftware.smack.serverless.service.LLServiceStateListener;
 import org.jivesoftware.smack.serverless.service.jmdns.DNSException;
 import org.jxmpp.jid.DomainBareJid;
 import org.jxmpp.jid.EntityBareJid;
-import org.jxmpp.jid.EntityJid;
 import org.jxmpp.jid.Jid;
 
 /**
@@ -393,7 +392,7 @@ public abstract class LLService {
         }
     }
 
-    protected void serviceNameChanged(EntityJid newName, EntityJid oldName) {
+    protected void serviceNameChanged(EntityBareJid newName, EntityBareJid oldName) {
         // update our own presence with the new name, for future connections
         presence.setServiceName(newName);
 
@@ -669,7 +668,7 @@ public abstract class LLService {
             XMPPLLConnection connection = getConnection(presence.getServiceName());
             
             chat = ChatManager.getInstanceFor(connection).chatWith(
-                    presence.getServiceName().asEntityBareJid());
+                    presence.getServiceName().asEntityBareJidOrThrow());
             //newLLChat(chat);
         }
         return chat;

@@ -32,7 +32,9 @@ import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.serverless.LLPresence;
 import org.jivesoftware.smack.serverless.LLService;
 import org.jivesoftware.smack.serverless.SLService;
+import org.jivesoftware.smack.serverless.XMPPSLConnection;
 import org.jivesoftware.smack.serverless.service.LLPresenceDiscoverer;
+import org.jxmpp.jid.EntityBareJid;
 import org.jxmpp.jid.EntityJid;
 import org.jxmpp.jid.impl.JidCreate;
 
@@ -46,8 +48,8 @@ public class JmDNSService2 extends SLService {
     private ServiceInfo serviceInfo;
     static final String SERVICE_TYPE = "_presence._tcp.local.";
 
-    private JmDNSService2(LLPresence presence, LLPresenceDiscoverer presenceDiscoverer) {
-        super(presence, presenceDiscoverer);
+    private JmDNSService2(LLPresence presence, LLPresenceDiscoverer presenceDiscoverer, XMPPSLConnection connection) {
+        super(presence, presenceDiscoverer, connection);
     }
 
     /**
@@ -56,7 +58,7 @@ public class JmDNSService2 extends SLService {
      * @param presence the mDNS presence information that should be used.
      * @param addr the INET Address to use.
      */
-    public static SLService create(LLPresence presence, InetAddress addr) throws XMPPException {
+    public static SLService create(LLPresence presence, InetAddress addr, XMPPSLConnection connection) throws XMPPException {
         // Start the JmDNS daemon.
         initJmDNS(addr);
 
@@ -64,7 +66,7 @@ public class JmDNSService2 extends SLService {
         JmDNSPresenceDiscoverer presenceDiscoverer = new JmDNSPresenceDiscoverer();
 
         // Start the presence service
-        JmDNSService2 service = new JmDNSService2(presence, presenceDiscoverer);
+        JmDNSService2 service = new JmDNSService2(presence, presenceDiscoverer, connection);
 
         return service;
     }
@@ -94,26 +96,24 @@ public class JmDNSService2 extends SLService {
         }
     }
 
-    protected void updateText() {
+    protected void updateText(LLPresence presence) {
         serviceInfo.setText(presence.toMap());
     }
 
     /**
      * Register the DNS-SD service with the daemon.
+     * @return 
      */
-    protected void registerService() throws XMPPException {
+    protected EntityBareJid registerService(LLPresence presence ) throws XMPPException {
         serviceInfo = ServiceInfo.create(SERVICE_TYPE,
                 presence.getServiceName().toString(), presence.getPort(), 0, 0, presence.toMap());
         
         try {
-            EntityJid originalServiceName = JidCreate.entityBareFrom( serviceInfo.getName());
             jmdns.registerService(serviceInfo);
-            EntityJid realizedServiceName = JidCreate.entityBareFrom( getRealizedServiceName(serviceInfo));
-            presence.setServiceName(realizedServiceName);
+            
+            EntityBareJid realizedServiceName = JidCreate.entityBareFrom( getRealizedServiceName(serviceInfo));
 
-            if (!originalServiceName.equals(realizedServiceName)) {
-                serviceNameChanged(realizedServiceName, originalServiceName);
-            }
+            return realizedServiceName;
         }
         catch (IOException ioe) {
             throw new DNSException("Failed to register DNS-SD Service", ioe);
@@ -138,15 +138,6 @@ public class JmDNSService2 extends SLService {
         }
         catch (IOException ioe) {
             throw new DNSException("Exception occured when reannouncing mDNS presence.", ioe);
-        }
-    }
-
-    public void serviceNameChanged(EntityJid newName, EntityJid oldName) {
-        try {
-            super.serviceNameChanged(newName, oldName);
-        }
-        catch (Throwable t) {
-            // ignore
         }
     }
 
