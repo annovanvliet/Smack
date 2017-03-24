@@ -35,8 +35,9 @@ public interface LLStream {
 
     /**
      * @param packet
+     * @throws InterruptedException 
      */
-    public void send(Stanza packet);
+    public void send(Stanza packet) throws InterruptedException;
 
 
     /**

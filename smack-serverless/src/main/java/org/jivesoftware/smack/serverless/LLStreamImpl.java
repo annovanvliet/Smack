@@ -7,9 +7,12 @@ import java.util.logging.Logger;
 
 import org.jivesoftware.smack.SmackException.NoResponseException;
 import org.jivesoftware.smack.SmackException.NotConnectedException;
+import org.jivesoftware.smack.packet.IQ;
 import org.jivesoftware.smack.packet.Nonza;
+import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.packet.StreamOpen;
+import org.jivesoftware.smack.packet.XMPPError;
 import org.jivesoftware.smack.serverless.packet.StreamFeatures;
 
 /**
@@ -18,7 +21,7 @@ import org.jivesoftware.smack.serverless.packet.StreamFeatures;
  */
 public class LLStreamImpl extends LLStreamModel implements LLStream {
 
-    private static final Logger LOGGER = Logger.getLogger(LLStreamImpl.class.getName());
+    private static final Logger logger = Logger.getLogger(LLStreamImpl.class.getName());
 
     /**
      * @param connection
@@ -43,7 +46,7 @@ public class LLStreamImpl extends LLStreamModel implements LLStream {
      */
     @Override
     public void openStream() {
-        LOGGER.fine("openStream" );
+        logger.fine("openStream" );
 
        StreamOpen streamOpen = new StreamOpen(getRemotePresence().getServiceName(), connection.getMe(), null);
        send(streamOpen);
@@ -64,18 +67,63 @@ public class LLStreamImpl extends LLStreamModel implements LLStream {
      * @see org.jivesoftware.smack.serverless.LLStream#send(org.jivesoftware.smack.packet.Stanza)
      */
     @Override
-    public void send(Stanza packet) {
-        LOGGER.fine("send" );
+    public void send(Stanza packet) throws InterruptedException {
+        logger.fine("send" );
         
         if ( getChannel() == null ) {
           new NotConnectedException("No Channel");
         } else {
-
+            
+            if ( !getReader().isRFC6120Compatible() ) {
+                if ( packet instanceof IQ ) {
+                    sendAndReplyOnIQ( (IQ) packet);
+                    return;
+                }    
+                if ( packet instanceof Presence ) {
+                    logger.finest("Probably No support for presences. Trying...");
+                }
+            }
             getChannel().writeAndFlush(packet);
+
         }
         
     }
     
+    /**
+     * @param packet
+     * @throws InterruptedException 
+     */
+    private void sendAndReplyOnIQ(IQ iq) throws InterruptedException {
+        logger.finest("sendAndReplyOnIQ");
+        
+        switch (iq.getType()) {
+        case get:
+            sendIQError(iq);
+            break;
+            
+        case set:
+            sendIQError(iq);
+            break;
+
+        default:
+            break;
+        }
+        
+    }
+
+    /**
+     * @param iq
+     * @throws InterruptedException 
+     */
+    private void sendIQError(IQ iq) throws InterruptedException {
+        logger.finest("sendIQError");
+
+        IQ err = IQ.createErrorResponse(iq, XMPPError.getBuilder((
+                        XMPPError.Condition.feature_not_implemented)));
+        
+        connection.autoRespond(err);        
+    }
+
     /* (non-Javadoc)
      * @see org.jivesoftware.smack.serverless.LLStream#send(org.jivesoftware.smack.packet.Stanza)
      */
@@ -99,11 +147,11 @@ public class LLStreamImpl extends LLStreamModel implements LLStream {
             if ( getChannel() != null ) {
                 getChannel().closeFuture().sync();
             } else {
-                LOGGER.fine("Closing empty channel");
+                logger.fine("Closing empty channel");
             }
         }
         catch (InterruptedException e) {
-            LOGGER.warning("Close channel Interrupted");;
+            logger.warning("Close channel Interrupted");;
         }
         setChannel(null);
         

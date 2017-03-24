@@ -67,6 +67,7 @@ public class XMLFrameDecoder extends ChannelInboundHandlerAdapter {
                 stream.setReader(reader);
             } else {
                 reader.setInput(ctx.channel(), sink, true);
+                reader.init();
             }
             
             

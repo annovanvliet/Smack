@@ -17,11 +17,16 @@
 
 package org.jivesoftware.smack.serverless;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import org.jivesoftware.smack.packet.IQ;
 import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.packet.Presence.Type;
+import org.jivesoftware.smack.roster.packet.RosterPacket;
+import org.jivesoftware.smack.roster.packet.RosterPacket.ItemType;
 import org.jxmpp.jid.BareJid;
 
 /**
@@ -72,6 +77,7 @@ public class LLPresence {
     private int port = 0;
     private String host;
     private BareJid serviceName;
+    private List<String> groups = new ArrayList<>();
 
     public LLPresence(BareJid serviceName) {
         this.serviceName = serviceName;
@@ -324,6 +330,34 @@ public class LLPresence {
     }
 
     /**
+     * @return
+     */
+    public RosterPacket getRosterPacket() {
+        
+        RosterPacket rosterPacket = new RosterPacket();
+        rosterPacket.setType(IQ.Type.set);
+        rosterPacket.addRosterItem(getRosterPacketItem());
+        return rosterPacket;
+    }
+
+    /**
+     * @return
+     */
+    public RosterPacket.Item getRosterPacketItem() {
+        
+        RosterPacket.Item item = new RosterPacket.Item(serviceName, getName());
+        if (groups != null) {
+            for (String group : groups) {
+                if (group != null && group.trim().length() > 0) {
+                    item.addGroupName(group);
+                }
+            }
+        }
+        item.setItemType(ItemType.both);
+        return item;
+    }
+
+    /**
      * @param status2
      * @return
      */
@@ -360,5 +394,6 @@ public class LLPresence {
         }
         return Mode.avail;
     }
+
 
 }

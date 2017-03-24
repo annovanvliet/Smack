@@ -4,7 +4,6 @@
 package org.jivesoftware.smack.serverless;
 
 import java.io.InputStream;
-import java.io.PipedInputStream;
 
 import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.SmackException.NoResponseException;
@@ -35,5 +34,14 @@ public interface XMPPReader {
      * 
      */
     void waitStreamOpened() throws InterruptedException, NoResponseException;
+
+    /**
+     * Is this stream compatible with RFC 6120? Stream attribute version is supplied.
+     * 
+     * If not no support for IQ and Presence
+     * 
+     * @return 
+     */
+    boolean isRFC6120Compatible();
 
 }

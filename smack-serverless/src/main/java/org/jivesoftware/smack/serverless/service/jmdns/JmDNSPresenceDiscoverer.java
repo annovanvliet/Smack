@@ -43,7 +43,7 @@ import org.jxmpp.stringprep.XmppStringprepException;
  */
 class JmDNSPresenceDiscoverer extends LLPresenceDiscoverer {
     
-    private static final Logger LOGGER = Logger.getLogger(JmDNSPresenceDiscoverer.class.getName());
+    private static final Logger logger = Logger.getLogger(JmDNSPresenceDiscoverer.class.getName());
     
     protected static final int SERVICE_REQUEST_TIMEOUT = 10000; 
     protected static JmDNS jmdns;
@@ -102,8 +102,6 @@ class JmDNSPresenceDiscoverer extends LLPresenceDiscoverer {
                 records.put(record[0], record[1]);
             }
         }
-        
-        LOGGER.fine("TXT:" + records);
         return records;
     }
 
@@ -112,33 +110,42 @@ class JmDNSPresenceDiscoverer extends LLPresenceDiscoverer {
      * service information resolved events.
      */
     private class PresenceServiceListener implements ServiceListener {
+        @Override
         public void serviceAdded(ServiceEvent event) {
+            logger.fine("serviceAdded");
             // XXX
             // To reduce network usage, we should only request information
             // when needed.
             new RequestInfoThread(event).start();
         }
         
+        @Override
         public void serviceRemoved(ServiceEvent event) {
+            logger.fine("serviceRemoved");
             try {
                 presenceRemoved(JidCreate.from(event.getName()));
             }
             catch (XmppStringprepException e) {
-                LOGGER.warning("service not Removed:" + e.getMessage());
+                logger.warning("service not Removed:" + e.getMessage());
             }
         }
         
+        @Override
         public void serviceResolved(ServiceEvent event) {
-            
             try {
                 EntityBareJid jid = JidCreate.entityBareFrom(event.getName());
+                Map<String, String> records = TXTListToXMPPRecords(TXTToList(event.getInfo().getTextBytes()));
+                
+                logger.fine("serviceResolved:" + jid + " - TXT:" + records);
+                
                 presenceInfoAdded( jid ,
                         new LLPresence(jid,
-                            event.getInfo().getHostAddress(), event.getInfo().getPort(),
-                            TXTListToXMPPRecords(TXTToList(event.getInfo().getTextBytes()))));
+                            event.getInfo().getHostAddress(), event.getInfo().getPort(),records));
+                
+                
             }
             catch (XmppStringprepException e) {
-                LOGGER.warning("service not Added:" + e.getMessage());
+                logger.warning("service not Added:" + e.getMessage());
             }
         }
 
