@@ -18,7 +18,8 @@ public interface XMPPReader {
 
     /**
      * @param channel 
-     * @param sink
+     * @param stream
+     * @param outgoing
      * @throws SmackException 
      */
     void setInput(Channel channel, InputStream stream, boolean outgoing ) throws SmackException;
@@ -29,7 +30,7 @@ public interface XMPPReader {
     void init();
 
     /**
-     * @throws SmackException 
+     * @throws InterruptedException 
      * @throws NoResponseException 
      * 
      */

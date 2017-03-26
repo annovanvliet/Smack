@@ -23,8 +23,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.jivesoftware.smack.SmackException;
+import org.jivesoftware.smack.SmackException.NoResponseException;
+import org.jivesoftware.smack.SmackException.NotConnectedException;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
+import org.jivesoftware.smack.XMPPException.XMPPErrorException;
 import org.jivesoftware.smack.packet.IQ;
 import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.packet.XMPPError;
@@ -32,7 +35,6 @@ import org.jivesoftware.smack.serverless.service.LLPresenceListener;
 import org.jivesoftware.smack.serverless.service.LLServiceConnectionListener;
 import org.jivesoftware.smack.serverless.service.LLServiceStateListener;
 import org.jivesoftware.smack.serverless.service.ServiceException;
-import org.jivesoftware.smack.serverless.service.jmdns.DNSException;
 import org.jivesoftware.smackx.caps.CapsVersionAndHash;
 import org.jivesoftware.smackx.caps.EntityCapsManager;
 import org.jivesoftware.smackx.disco.NodeInformationProvider;
@@ -42,50 +44,41 @@ import org.jivesoftware.smackx.disco.packet.DiscoverItems;
 import org.jivesoftware.smackx.xdata.packet.DataForm;
 import org.jxmpp.jid.Jid;
 
-/** 
- * LLServiceDiscoveryManager acts as a wrapper around ServiceDiscoveryManager
- * as ServiceDiscoveryManager only creates an interface for requesting service
- * information on existing connections. Simply said it creates new connections
- * when needed,  uses already active connections  when appropriate and applies
- * values to new connections.
+/**
+ * LLServiceDiscoveryManager acts as a wrapper around ServiceDiscoveryManager as ServiceDiscoveryManager only creates an
+ * interface for requesting service information on existing connections. Simply said it creates new connections when
+ * needed, uses already active connections when appropriate and applies values to new connections.
  *
  * @author Jonas Ådahl
  */
 public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
-    private static Map<LLService,LLServiceDiscoveryManager> serviceManagers =
-        new ConcurrentHashMap<LLService,LLServiceDiscoveryManager>();
+    private static Map<LLService, LLServiceDiscoveryManager> serviceManagers = new ConcurrentHashMap<LLService, LLServiceDiscoveryManager>();
 
-    private LLService service;
+    private final LLService service;
 
     /*
-        We'll create a new LLServiceDiscoveryManager each time a new XMPPLLConnection
-        is created. The issue with the above attempt to create a LLServiceDiscoveryManager
-        on each LLService creation is that, by my reading, we must have both an XMPPLLConnection
-        and LLService to construct a meaningful LLServiceDiscoveryManager.
-
-        If a client would like to specify features to be advertised in advance of an
-        XMPPLLConnection being created, they should register those features with
-        ServiceDiscoveryManager#addDefaultFeature(String)
-        This way we manage advertised features in one spot, not per individual XMPPLLConnection.
-        Perhaps an even better solution would be for each LLService to manage the list of features
-        to be provided to each LLServiceDiscoveryManager whenever an XMPPLLConnection is initiated.
-        Please let me know (dbro@dbro.pro) if you've any thoughts on this matter.
+     * We'll create a new LLServiceDiscoveryManager each time a new XMPPLLConnection is created. The issue with the
+     * above attempt to create a LLServiceDiscoveryManager on each LLService creation is that, by my reading, we must
+     * have both an XMPPLLConnection and LLService to construct a meaningful LLServiceDiscoveryManager. If a client
+     * would like to specify features to be advertised in advance of an XMPPLLConnection being created, they should
+     * register those features with ServiceDiscoveryManager#addDefaultFeature(String) This way we manage advertised
+     * features in one spot, not per individual XMPPLLConnection. Perhaps an even better solution would be for each
+     * LLService to manage the list of features to be provided to each LLServiceDiscoveryManager whenever an
+     * XMPPLLConnection is initiated. Please let me know (dbro@dbro.pro) if you've any thoughts on this matter.
      */
     static {
-//        XMPPLLConnection.addLLConnectionListener(new AbstractConnectionListener<XMPPLLConnection>() {
-//
-//            @Override
-//            public void connected(XMPPLLConnection connection) {
-//                addLLServiceDiscoveryManager(getInstanceFor(connection));
-//            }
-//        });
+        // XMPPLLConnection.addLLConnectionListener(new AbstractConnectionListener<XMPPLLConnection>() {
+        //
+        // @Override
+        // public void connected(XMPPLLConnection connection) {
+        // addLLServiceDiscoveryManager(getInstanceFor(connection));
+        // }
+        // });
     }
 
     protected LLServiceDiscoveryManager(LLService llservice, XMPPConnection connection) {
         super(connection);
         this.service = llservice;
-
-
 
         // Add LLService state listener
         service.addServiceStateListener(new LLServiceStateListener() {
@@ -110,13 +103,13 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
                 // are established, so may remove this logic
 
                 // Remove entries
-                capsManager.removeUserCapsNode(n);
-                capsManager.removeUserCapsNode(o);
+                EntityCapsManager.removeUserCapsNode(n);
+                EntityCapsManager.removeUserCapsNode(o);
                 LLPresence np = service.getPresenceByServiceName(n);
                 LLPresence op = service.getPresenceByServiceName(o);
 
                 // Add existing values, if any
-                if (np != null && np.getNode() != null && np.getVer() != null){
+                if (np != null && np.getNode() != null && np.getVer() != null) {
                     capsManager.addUserCapsNode(n, np.getNode(), np.getVer());
                 }
                 if (op != null && op.getNode() != null && op.getVer() != null)
@@ -128,24 +121,20 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
         capsManager = EntityCapsManager.getInstanceFor(connection);
         EntityCapsManager.addCapsVerListener(new CapsPresenceRenewer());
         // Provide EntityCaps features, identities & node to own DiscoverInfo
-//        capsManager.calculateEntityCapsVersion(getOwnDiscoverInfo(),
-//                getIdentityType(),
-//                getIdentityName(),
-//                extendedInfo);
+        // capsManager.calculateEntityCapsVersion(getOwnDiscoverInfo(),
+        // getIdentityType(),
+        // getIdentityName(),
+        // extendedInfo);
 
         capsManager.updateLocalEntityCaps();
-
 
         // Add presence listener. The presence listener will gather
         // entity caps data
         service.addPresenceListener(new LLPresenceListener() {
             public void presenceNew(LLPresence presence) {
-                if (presence.getHash() != null &&
-                    presence.getNode() != null &&
-                    presence.getVer() != null) {
+                if (presence.getHash() != null && presence.getNode() != null && presence.getVer() != null) {
                     // Add presence to caps manager
-                    capsManager.addUserCapsNode(presence.getServiceName(),
-                        presence.getNode(), presence.getVer());
+                    capsManager.addUserCapsNode(presence.getServiceName(), presence.getNode(), presence.getVer());
                 }
             }
 
@@ -157,12 +146,12 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
         service.addLLServiceConnectionListener(new ConnectionServiceMaintainer());
     }
 
-    /**
-     * Add LLServiceDiscoveryManager to the map of existing ones.
-     */
-    private static void addLLServiceDiscoveryManager(LLServiceDiscoveryManager manager) {
-        serviceManagers.put(manager.service, manager);
-    }
+    // /**
+    // * Add LLServiceDiscoveryManager to the map of existing ones.
+    // */
+    // private static void addLLServiceDiscoveryManager(LLServiceDiscoveryManager manager) {
+    // serviceManagers.put(manager.service, manager);
+    // }
 
     /**
      * Remove LLServiceDiscoveryManager from the map of existing ones.
@@ -174,33 +163,35 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
     /**
      * Get the LLServiceDiscoveryManager instance for a specific Link-local service.
      *
-     * @param service 
+     * @param service
+     * @return instance
      */
     public static LLServiceDiscoveryManager getInstanceFor(LLService service) {
         return serviceManagers.get(service);
     }
 
     public static LLServiceDiscoveryManager getInstanceFor(XMPPLLConnection connection) {
-        LLServiceDiscoveryManager llsdm =  serviceManagers.get(connection.getService());
+        LLServiceDiscoveryManager llsdm = serviceManagers.get(connection.getService());
         if (llsdm == null) {
             llsdm = new LLServiceDiscoveryManager(connection.getService(), connection);
         }
         return llsdm;
     }
 
-//    When would we change the Identity type?
-//    use ServiceDiscoveryManager#setIdentity(Identity)
-//    /**
-//     * Sets the type of client that will be returned when asked for the client identity in a
-//     * disco request. The valid types are defined by the category client. Follow this link to learn
-//     * the possible types: <a href="http://www.jabber.org/registrar/disco-categories.html#client">Jabber::Registrar</a>.
-//     *
-//     * @param type the type of client that will be returned when asked for the client identity in a
-//     *          disco request.
-//     */
-//    public static void setIdentityType(String type) {
-//        ServiceDiscoveryManager.setIdentityType(type);
-//    }
+    // When would we change the Identity type?
+    // use ServiceDiscoveryManager#setIdentity(Identity)
+    // /**
+    // * Sets the type of client that will be returned when asked for the client identity in a
+    // * disco request. The valid types are defined by the category client. Follow this link to learn
+    // * the possible types: <a
+    // href="http://www.jabber.org/registrar/disco-categories.html#client">Jabber::Registrar</a>.
+    // *
+    // * @param type the type of client that will be returned when asked for the client identity in a
+    // * disco request.
+    // */
+    // public static void setIdentityType(String type) {
+    // ServiceDiscoveryManager.setIdentityType(type);
+    // }
 
     /**
      * Add discover info response data.
@@ -210,8 +201,7 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
     @Override
     public void addDiscoverInfoTo(DiscoverInfo response) {
         // Set this client identity
-        DiscoverInfo.Identity identity = new DiscoverInfo.Identity("client",
-                getIdentityName(), getIdentityType());
+        DiscoverInfo.Identity identity = new DiscoverInfo.Identity("client", getIdentityName(), getIdentityType());
         response.addIdentity(identity);
         // Add the registered features to the response
         // Add Entity Capabilities (XEP-0115) feature node.
@@ -220,9 +210,9 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
         for (String feature : getFeatures()) {
             response.addFeature(feature);
         }
-//        if (extendedInfo != null) {
-//            response.addExtension(extendedInfo);
-//        }
+        // if (extendedInfo != null) {
+        // response.addExtension(extendedInfo);
+        // }
     }
 
     /**
@@ -237,10 +227,10 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
 
         // Add discover info
         addDiscoverInfoTo(di);
-        
-//        for (String feature : features) {
-//            di.addFeature(feature);
-//        }
+
+        // for (String feature : features) {
+        // di.addFeature(feature);
+        // }
 
         return di;
     }
@@ -249,45 +239,41 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
      * Returns a new or already established connection to the given service name.
      *
      * @param serviceName remote service to which we wish to be connected to.
-     * @throws InterruptedException 
-     * @throws XMPPException 
+     * @throws InterruptedException
+     * @throws XMPPException
      * @returns an established connection to the given service name.
      */
-    private XMPPLLConnection getConnection(Jid serviceName) throws IOException, SmackException, XMPPException, InterruptedException {
+    private XMPPLLConnection getConnection(Jid serviceName)
+                    throws IOException, SmackException, XMPPException, InterruptedException {
         return service.getConnection(serviceName);
     }
 
-    /** 
-     * Returns a ServiceDiscoveryManager instance for a new or already established
-     * connection to the given service name.
+    /**
+     * Returns a ServiceDiscoveryManager instance for a new or already established connection to the given service name.
      *
      * @param serviceName the name of the service we wish to get the ServiceDiscoveryManager instance for.
-     * @throws InterruptedException 
-     * @throws XMPPException 
+     * @throws InterruptedException
+     * @throws XMPPException
      * @returns the ServiceDiscoveryManager instance.
      */
-    private ServiceDiscoveryManager getInstance(Jid serviceName) throws SmackException, IOException, XMPPException, InterruptedException {
+    private ServiceDiscoveryManager getInstance(Jid serviceName)
+                    throws SmackException, IOException, XMPPException, InterruptedException {
         return ServiceDiscoveryManager.getInstanceFor(getConnection(serviceName));
     }
 
     /**
-     * Registers extended discovery information of this XMPP entity. When this
-     * client is queried for its information this data form will be returned as
-     * specified by XEP-0128.
+     * Registers extended discovery information of this XMPP entity. When this client is queried for its information
+     * this data form will be returned as specified by XEP-0128.
      * <p>
+     * Since no packet is actually sent to the server it is safe to perform this operation before logging to the server.
+     * In fact, you may want to configure the extended info before logging to the server so that the information is
+     * already available if it is required upon login.
      *
-     * Since no packet is actually sent to the server it is safe to perform this
-     * operation before logging to the server. In fact, you may want to
-     * configure the extended info before logging to the server so that the
-     * information is already available if it is required upon login.
-     *
-     * @param info
-     *            the data form that contains the extend service discovery
-     *            information.
+     * @param info the data form that contains the extend service discovery information.
      */
     @Override
     public void setExtendedInfo(DataForm info) {
-//        extendedInfo = info;
+        // extendedInfo = info;
 
         // set for already active connections
         for (XMPPLLConnection connection : service.getConnections())
@@ -297,15 +283,14 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
     }
 
     /**
-     * Removes the dataform containing extended service discovery information
-     * from the information returned by this XMPP entity.<p>
-     *
-     * Since no packet is actually sent to the server it is safe to perform this
-     * operation before logging to the server.
+     * Removes the dataform containing extended service discovery information from the information returned by this XMPP
+     * entity.
+     * <p>
+     * Since no packet is actually sent to the server it is safe to perform this operation before logging to the server.
      */
     @Override
     public void removeExtendedInfo() {
-//        extendedInfo = null;
+        // extendedInfo = null;
 
         // remove for already active connections
         for (XMPPLLConnection connection : service.getConnections())
@@ -314,20 +299,9 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
         renewEntityCapsVersion();
     }
 
-    /**
-     * Returns the discovered information of a given XMPP entity addressed by its JID and
-     * note attribute. Use this message only when trying to query information which is not
-     * directly addressable.
-     *
-     * @param serviceName the service name of the XMPP entity.
-     * @param node the attribute that supplements the 'jid' attribute.
-     * @return the discovered information.
-     * @throws DNSException 
-     * @throws InterruptedException 
-     * @throws XMPPException if the operation failed for some reason.
-     */
     @Override
-    public DiscoverInfo discoverInfo(Jid serviceName, String node) throws XMPPException.XMPPErrorException, SmackException.NotConnectedException, SmackException.NoResponseException, InterruptedException {
+    public DiscoverInfo discoverInfo(Jid serviceName, String node) throws XMPPException.XMPPErrorException,
+                    SmackException.NotConnectedException, SmackException.NoResponseException, InterruptedException {
         // Discover the entity's info
         DiscoverInfo disco = new DiscoverInfo();
         disco.setType(IQ.Type.get);
@@ -337,8 +311,9 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
         IQ result = null;
         try {
             result = service.getIQResponse(disco);
-        } catch (XMPPException | IOException | SmackException e) {
-//            throw new SmackException.NoResponseException();
+        }
+        catch (XMPPException | IOException | SmackException e) {
+            // throw new SmackException.NoResponseException();
         }
         if (result == null) {
             throw new ServiceException("No response from the server.", XMPPError.Condition.remote_server_timeout);
@@ -352,19 +327,9 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
         throw new ServiceException("Result was not a disco info reply.");
     }
 
-    /**
-     * Returns the discovered items of a given XMPP entity addressed by its JID and
-     * note attribute. Use this message only when trying to query information which is not 
-     * directly addressable.
-     * 
-     * @param serviceName the service name of the XMPP entity.
-     * @param node the attribute that supplements the 'jid' attribute.
-     * @return the discovered items.
-     * @throws InterruptedException 
-     * @throws XMPPException if the operation failed for some reason.
-     */
     @Override
-    public DiscoverItems discoverItems(Jid serviceName, String node) throws SmackException.NoResponseException, XMPPException.XMPPErrorException, SmackException.NotConnectedException, InterruptedException {
+    public DiscoverItems discoverItems(Jid serviceName, String node) throws SmackException.NoResponseException,
+                    XMPPException.XMPPErrorException, SmackException.NotConnectedException, InterruptedException {
         // Discover the entity's items
         DiscoverItems disco = new DiscoverItems();
         disco.setType(IQ.Type.get);
@@ -374,8 +339,9 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
         IQ result = null;
         try {
             result = service.getIQResponse(disco);
-        } catch (XMPPException | IOException | SmackException e) {
-//            throw new SmackException.NoResponseException();
+        }
+        catch (XMPPException | IOException | SmackException e) {
+            // throw new SmackException.NoResponseException();
         }
         if (result == null) {
             throw new ServiceException("No response from the server.", XMPPError.Condition.remote_server_timeout);
@@ -389,22 +355,8 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
         throw new ServiceException("Result was not a disco info reply.");
     }
 
-    /**
-     * Sets the NodeInformationProvider responsible for providing information 
-     * (ie items) related to a given node. Every time this client receives a disco request
-     * regarding the items of a given node, the provider associated to that node will be the 
-     * responsible for providing the requested information.<p>
-     * 
-     * In MUC, a node could be 'http://jabber.org/protocol/muc#rooms' which means that the
-     * NodeInformationProvider will provide information about the rooms where the user has joined. 
-     * 
-     * @param node the node whose items will be provided by the NodeInformationProvider.
-     * @param listener the NodeInformationProvider responsible for providing items related
-     *      to the node.
-     */
     @Override
-    public void setNodeInformationProvider(String node,
-            NodeInformationProvider listener) {
+    public void setNodeInformationProvider(String node, NodeInformationProvider listener) {
         super.setNodeInformationProvider(node, listener);
 
         // set for already active connections
@@ -414,12 +366,10 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
     }
 
     /**
-     * Removes the NodeInformationProvider responsible for providing information 
-     * (ie items) related to a given node. This means that no more information will be
-     * available for the specified node.
-     * 
-     * In MUC, a node could be 'http://jabber.org/protocol/muc#rooms' which means that the
-     * NodeInformationProvider will provide information about the rooms where the user has joined. 
+     * Removes the NodeInformationProvider responsible for providing information (ie items) related to a given node.
+     * This means that no more information will be available for the specified node. In MUC, a node could be
+     * 'http://jabber.org/protocol/muc#rooms' which means that the NodeInformationProvider will provide information
+     * about the rooms where the user has joined.
      * 
      * @param node the node to remove the associated NodeInformationProvider.
      */
@@ -433,10 +383,9 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
     }
 
     /**
-     * Removes the specified feature from the supported features set for all XMPPLL entities.<p>
-     *
-     * Since no packet is actually sent to the server it is safe to perform this operation
-     * before logging to the server.
+     * Removes the specified feature from the supported features set for all XMPPLL entities.
+     * <p>
+     * Since no packet is actually sent to the server it is safe to perform this operation before logging to the server.
      *
      * @param feature the feature to remove from the supported features.
      */
@@ -448,69 +397,73 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
         super.removeFeature(feature);
     }
 
-
-//    /**
-//     * Returns true if the specified feature is registered in the ServiceDiscoveryManager.
-//     *
-//     * @param feature the feature to look for.
-//     * @return a boolean indicating if the specified featured is registered or not.
-//     */
-//    @Override
-//    public boolean includesFeature(String feature) {
-//        return features.contains(feature);
-//    }
+    // /**
+    // * Returns true if the specified feature is registered in the ServiceDiscoveryManager.
+    // *
+    // * @param feature the feature to look for.
+    // * @return a boolean indicating if the specified featured is registered or not.
+    // */
+    // @Override
+    // public boolean includesFeature(String feature) {
+    // return features.contains(feature);
+    // }
 
     /**
-     * Returns true if the server supports publishing of items. A client may wish to publish items
-     * to the server so that the server can provide items associated to the client. These items will
-     * be returned by the server whenever the server receives a disco request targeted to the bare
-     * address of the client (i.e. user@host.com).
+     * Returns true if the server supports publishing of items. A client may wish to publish items to the server so that
+     * the server can provide items associated to the client. These items will be returned by the server whenever the
+     * server receives a disco request targeted to the bare address of the client (i.e. user@host.com).
      * 
      * @param entityID the address of the XMPP entity.
      * @return true if the server supports publishing of items.
-     * @throws InterruptedException 
-     * @throws XMPPException if the operation failed for some reason.
+     * @throws InterruptedException
+     * @throws NotConnectedException 
+     * @throws XMPPErrorException 
+     * @throws NoResponseException 
      */
     @Override
-    public boolean canPublishItems(Jid entityID) throws SmackException.NoResponseException, XMPPException.XMPPErrorException, SmackException.NotConnectedException, InterruptedException {
+    public boolean canPublishItems(Jid entityID) throws InterruptedException, NoResponseException, XMPPErrorException, NotConnectedException {
         DiscoverInfo info = discoverInfo(entityID);
         return ServiceDiscoveryManager.canPublishItems(info);
     }
 
     /**
-     * Publishes new items to a parent entity. The item elements to publish MUST have at least 
-     * a 'jid' attribute specifying the Entity ID of the item, and an action attribute which 
-     * specifies the action being taken for that item. Possible action values are: "update" and 
-     * "remove".
+     * Publishes new items to a parent entity. The item elements to publish MUST have at least a 'jid' attribute
+     * specifying the Entity ID of the item, and an action attribute which specifies the action being taken for that
+     * item. Possible action values are: "update" and "remove".
      * 
      * @param entityID the address of the XMPP entity.
      * @param discoverItems the DiscoveryItems to publish.
-     * @throws InterruptedException 
-     * @throws XMPPException if the operation failed for some reason.
+     * @throws InterruptedException
+     * @throws NotConnectedException 
+     * @throws XMPPErrorException 
+     * @throws NoResponseException 
      */
     @Override
-    public void publishItems(Jid entityID, DiscoverItems discoverItems) throws SmackException.NoResponseException, XMPPException.XMPPErrorException, SmackException.NotConnectedException, InterruptedException {
+    public void publishItems(Jid entityID, DiscoverItems discoverItems) throws InterruptedException, NoResponseException, XMPPErrorException, NotConnectedException {
         publishItems(entityID, null, discoverItems);
     }
 
     /**
-     * Publishes new items to a parent entity and node. The item elements to publish MUST have at 
-     * least a 'jid' attribute specifying the Entity ID of the item, and an action attribute which 
-     * specifies the action being taken for that item. Possible action values are: "update" and 
-     * "remove".
+     * Publishes new items to a parent entity and node. The item elements to publish MUST have at least a 'jid'
+     * attribute specifying the Entity ID of the item, and an action attribute which specifies the action being taken
+     * for that item. Possible action values are: "update" and "remove".
      * 
      * @param entityID the address of the XMPP entity.
      * @param node the attribute that supplements the 'jid' attribute.
      * @param discoverItems the DiscoveryItems to publish.
-     * @throws InterruptedException 
-     * @throws XMPPException if the operation failed for some reason.
+     * @throws InterruptedException
+     * @throws NotConnectedException 
+     * @throws XMPPErrorException 
+     * @throws NoResponseException 
      */
     @Override
     public void publishItems(Jid entityID, String node, DiscoverItems discoverItems)
-            throws SmackException.NoResponseException, XMPPException.XMPPErrorException, SmackException.NotConnectedException, InterruptedException {
+                    throws SmackException.NoResponseException, XMPPException.XMPPErrorException,
+                    SmackException.NotConnectedException, InterruptedException {
         try {
             getInstance(entityID).publishItems(entityID, node, discoverItems);
-        } catch (XMPPException | SmackException | IOException e) {
+        }
+        catch (XMPPException | SmackException | IOException e) {
             e.printStackTrace();
             // An exception specific to the Serverless stack occurred.
             // IOException : We were unable to complete #getConnection in LLService at XMPPLLConnection#connect()
@@ -519,20 +472,18 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
         }
     }
 
-//    private String getEntityCapsVersion() {
-//        if (capsManager != null) {
-//            return capsManager.getCapsVersion();
-//        }
-//        else {
-//            return null;
-//        }
-//    }
-
+    // private String getEntityCapsVersion() {
+    // if (capsManager != null) {
+    // return capsManager.getCapsVersion();
+    // }
+    // else {
+    // return null;
+    // }
+    // }
 
     /**
-     * In case that a connection is unavailable we create a new connection
-     * and push the service discovery procedure until the new connection is
-     * established.
+     * In case that a connection is unavailable we create a new connection and push the service discovery procedure
+     * until the new connection is established.
      */
     private class ConnectionServiceMaintainer implements LLServiceConnectionListener {
 
@@ -543,19 +494,19 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
             // Set Entity Capabilities Manager
             manager.setEntityCapsManager(capsManager);
 
-//            // Set extended info
-//            manager.setExtendedInfo(extendedInfo);
-//
-//            // Set node information providers
-//            for (Map.Entry<String,NodeInformationProvider> entry :
-//                    nodeInformationProviders.entrySet()) {
-//                manager.setNodeInformationProvider(entry.getKey(), entry.getValue());
-//            }
-//
-//            // add features
-//            for (String feature : features) {
-//                manager.addFeature(feature);
-//            }
+            // // Set extended info
+            // manager.setExtendedInfo(extendedInfo);
+            //
+            // // Set node information providers
+            // for (Map.Entry<String,NodeInformationProvider> entry :
+            // nodeInformationProviders.entrySet()) {
+            // manager.setNodeInformationProvider(entry.getKey(), entry.getValue());
+            // }
+            //
+            // // add features
+            // for (String feature : features) {
+            // manager.addFeature(feature);
+            // }
         }
     }
 

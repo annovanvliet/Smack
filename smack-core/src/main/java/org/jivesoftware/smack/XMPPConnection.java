@@ -17,17 +17,20 @@
 package org.jivesoftware.smack;
 
 
+import java.io.IOException;
+
 import org.jivesoftware.smack.SmackException.NoResponseException;
 import org.jivesoftware.smack.SmackException.NotConnectedException;
 import org.jivesoftware.smack.filter.IQReplyFilter;
 import org.jivesoftware.smack.filter.StanzaFilter;
 import org.jivesoftware.smack.iqrequest.IQRequestHandler;
-import org.jivesoftware.smack.packet.IQ;
-import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.packet.ExtensionElement;
+import org.jivesoftware.smack.packet.IQ;
 import org.jivesoftware.smack.packet.Nonza;
+import org.jivesoftware.smack.packet.Stanza;
 import org.jxmpp.jid.DomainBareJid;
 import org.jxmpp.jid.EntityFullJid;
+import org.jxmpp.jid.parts.Resourcepart;
 
 /**
  * The XMPPConnection interface provides an interface for connections to an XMPP server and
@@ -647,5 +650,31 @@ public interface XMPPConnection {
      * @return the timestamp in milliseconds
      */
     public long getLastStanzaReceived();
+
+    /**
+     * @param username
+     * @param password
+     * @param resource
+     * @throws XMPPException
+     * @throws SmackException
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    void login(CharSequence username, String password, Resourcepart resource)
+                    throws XMPPException, SmackException, IOException, InterruptedException;
+
+    /**
+     * @return
+     * @throws SmackException
+     * @throws IOException
+     * @throws XMPPException
+     * @throws InterruptedException
+     */
+    AbstractXMPPConnection connect() throws SmackException, IOException, XMPPException, InterruptedException;
+
+    /**
+     * 
+     */
+    void disconnect();
 
 }

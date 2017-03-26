@@ -21,7 +21,7 @@ public class SLServerHandler extends SimpleChannelInboundHandler<String> {
     private final ChannelGroup channels;
 
     /**
-     * @param channels2
+     * @param channels
      */
     public SLServerHandler(ChannelGroup channels) {
         this.channels = channels;

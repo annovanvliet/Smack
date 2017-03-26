@@ -9,9 +9,10 @@ import org.jivesoftware.smack.packet.XMPPError.Condition;
 
 /**
  * @author anno
- *
  */
 public class ServiceException extends XMPPErrorException {
+
+    private static final long serialVersionUID = 6059975543086870735L;
 
     /**
      * @param string
@@ -22,18 +23,18 @@ public class ServiceException extends XMPPErrorException {
 
     /**
      * @param string
-     * @param resourceConstraint
+     * @param condition
      */
     public ServiceException(String string, Condition condition) {
-        
-        super(XMPPError.getBuilder(condition).setDescriptiveEnText(string));
+
+        super(null, XMPPError.getBuilder(condition).setDescriptiveEnText(string).build());
     }
 
     /**
      * @param error
      */
     public ServiceException(XMPPError error) {
-        super(XMPPError.getBuilder(error));
+        super(null, XMPPError.getBuilder(error).build());
     }
 
 }

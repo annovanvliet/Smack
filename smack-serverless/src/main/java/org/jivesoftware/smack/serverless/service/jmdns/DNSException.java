@@ -12,6 +12,8 @@ import org.jivesoftware.smack.XMPPException;
  *
  */
 public class DNSException extends XMPPException {
+    
+    private static final long serialVersionUID = -2557291528131452686L;
 
     /**
      * @param string

@@ -140,7 +140,7 @@ class JmDNSPresenceDiscoverer extends LLPresenceDiscoverer {
                 
                 presenceInfoAdded( jid ,
                         new LLPresence(jid,
-                            event.getInfo().getHostAddress(), event.getInfo().getPort(),records));
+                            event.getInfo().getHostAddresses(), event.getInfo().getPort(),records));
                 
                 
             }

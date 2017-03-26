@@ -59,15 +59,15 @@ import org.jivesoftware.smack.filter.StanzaIdFilter;
 import org.jivesoftware.smack.iqrequest.IQRequestHandler;
 import org.jivesoftware.smack.packet.Bind;
 import org.jivesoftware.smack.packet.ErrorIQ;
+import org.jivesoftware.smack.packet.ExtensionElement;
 import org.jivesoftware.smack.packet.IQ;
 import org.jivesoftware.smack.packet.Mechanisms;
 import org.jivesoftware.smack.packet.Message;
-import org.jivesoftware.smack.packet.Stanza;
-import org.jivesoftware.smack.packet.ExtensionElement;
+import org.jivesoftware.smack.packet.Nonza;
 import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.packet.Session;
+import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.packet.StartTls;
-import org.jivesoftware.smack.packet.Nonza;
 import org.jivesoftware.smack.packet.StreamError;
 import org.jivesoftware.smack.packet.XMPPError;
 import org.jivesoftware.smack.parsing.ParsingExceptionCallback;
@@ -362,6 +362,7 @@ public abstract class AbstractXMPPConnection implements XMPPConnection {
      * @return a reference to this object, to chain <code>connect()</code> with <code>login()</code>.
      * @throws InterruptedException 
      */
+    @Override
     public synchronized AbstractXMPPConnection connect() throws SmackException, IOException, XMPPException, InterruptedException {
         // Check if not already connected
         throwAlreadyConnectedExceptionIfAppropriate();
@@ -478,6 +479,7 @@ public abstract class AbstractXMPPConnection implements XMPPConnection {
      * @throws InterruptedException 
      * @see #login
      */
+    @Override
     public synchronized void login(CharSequence username, String password, Resourcepart resource) throws XMPPException,
                     SmackException, IOException, InterruptedException {
         if (!config.allowNullOrEmptyUsername) {
@@ -702,6 +704,7 @@ public abstract class AbstractXMPPConnection implements XMPPConnection {
      * again.
      *
      */
+    @Override
     public void disconnect() {
         try {
             disconnect(new Presence(Presence.Type.unavailable));

@@ -18,7 +18,6 @@ import org.jivesoftware.smack.SmackException.NoResponseException;
 import org.jivesoftware.smack.SmackException.NotConnectedException;
 import org.jivesoftware.smack.SmackException.SecurityRequiredException;
 import org.jivesoftware.smack.SynchronizationPoint;
-import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.XMPPException.StreamErrorException;
 import org.jivesoftware.smack.compress.packet.Compressed;
@@ -58,7 +57,7 @@ import io.netty.channel.Channel;
 /**
  * @author anno
  */
-public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConnection {
+public class XMPPSLConnection extends AbstractXMPPConnection {
 
     private static final Logger logger = Logger.getLogger(XMPPSLConnection.class.getName());
 
@@ -75,7 +74,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
     private LLPresenceListener myPresenceListener = new MyPresenceListener();
 
     /**
-     * @param build
+     * @param configuration
      */
     public XMPPSLConnection(LLConnectionConfiguration configuration) {
         super(configuration);
@@ -853,10 +852,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
     }
 
     /**
-     * @param ch
-     * @param to
-     * @param from
-     * @param outgoing
+     * @param partner
      * @return
      */
     public XMPPReader createOutgoingXMPPReader(LLStream partner) {
@@ -875,8 +871,6 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
      * @return
      * @throws InterruptedException
      * @throws NotConnectedException
-     * @throws SmackException
-     * @throws NoResponseException
      */
     public LLStream getStreamByJid(Jid jid) throws InterruptedException, NotConnectedException {
 
@@ -1023,7 +1017,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
     }
 
     /**
-     * @param packet
+     * @param stanza
      */
     private void sendToDebug(Stanza stanza) {
         logger.finest("sendToDebug");
@@ -1043,8 +1037,7 @@ public class XMPPSLConnection extends AbstractXMPPConnection implements XMPPConn
 
     
     /**
-     * @param err
-     * @throws InterruptedException
+     * @param stanza
      */
     public void autoRespond(Stanza stanza) {
         logger.finest("autoRespond");

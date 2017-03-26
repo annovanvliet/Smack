@@ -23,6 +23,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
@@ -33,6 +34,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import org.jivesoftware.smack.ConnectionListener;
 import org.jivesoftware.smack.SmackConfiguration;
 import org.jivesoftware.smack.SmackException;
+import org.jivesoftware.smack.SmackException.NotConnectedException;
 import org.jivesoftware.smack.StanzaCollector;
 import org.jivesoftware.smack.StanzaListener;
 import org.jivesoftware.smack.XMPPConnection;
@@ -101,9 +103,9 @@ public abstract class LLService {
 
     private Map<EntityBareJid,Chat> chats = new ConcurrentHashMap<>();
 
-    private Map<DomainBareJid,XMPPLLConnection> ingoing =
+    private final Map<DomainBareJid,XMPPLLConnection> ingoing =
         new ConcurrentHashMap<DomainBareJid,XMPPLLConnection>();
-    private Map<DomainBareJid,XMPPLLConnection> outgoing =
+    private final Map<DomainBareJid,XMPPLLConnection> outgoing =
         new ConcurrentHashMap<DomainBareJid,XMPPLLConnection>();
 
     // Listeners for state updates, such as LLService closed down
@@ -129,7 +131,7 @@ public abstract class LLService {
         new CopyOnWriteArraySet<CollectorWrapper>();
 
     // Set of associated connections.
-    private Set<XMPPLLConnection> associatedConnections =
+    private final Set<XMPPLLConnection> associatedConnections =
         new HashSet<XMPPLLConnection>();
 
     private ServerSocket socket;
@@ -152,7 +154,7 @@ public abstract class LLService {
 
         System.out.println("Known presences:");
         for (LLPresence presence : presenceDiscoverer.getPresences()) {
-            System.out.println(" * " + presence.getServiceName() + "(" + presence.getStatus() + ", " + presence.getHost() + ":" + presence.getPort() + ")");
+            System.out.println(" * " + presence.getServiceName() + "(" + presence.getStatus() + ", " + Arrays.toString(presence.getHost()) + ":" + presence.getPort() + ")");
         }
         Thread.currentThread().getThreadGroup().list();
     }
@@ -216,6 +218,7 @@ public abstract class LLService {
 
     /**
      * Remove a LLServiceListener.
+     * @param listener
      */
     public static void removeLLServiceListener(LLServiceListener listener) {
         serviceCreatedListeners.remove(listener);
@@ -248,11 +251,13 @@ public abstract class LLService {
     /**
      * Registers the service to the mDNS/DNS-SD daemon.
      * Should be implemented by the class extending this, for mDNS/DNS-SD library specific calls.
+     * @throws XMPPException
      */
     protected abstract void registerService() throws XMPPException;
 
     /**
      * Re-announce the presence information by using the mDNS/DNS-SD daemon.
+     * @throws XMPPException
      */
     protected abstract void reannounceService() throws XMPPException;
 
@@ -497,6 +502,7 @@ public abstract class LLService {
 
     /** 
      * Remove a stanza listener.
+     * @param listener
      */
     public void removeStanzaListener(StanzaListener listener) {
         listeners.remove(listener);
@@ -588,7 +594,7 @@ public abstract class LLService {
      * user wants to change a property on all connections, such as add a service
      * discovery feature or other.
      *
-     * @return a colllection of all active connections.
+     * @return a collection of all active connections.
      */
     public Collection<XMPPLLConnection> getConnections() {
         Collection<XMPPLLConnection> connections =
@@ -656,8 +662,11 @@ public abstract class LLService {
      * @param serviceName the service name
      * @return a chat session instance associated with the given service name.
      * @throws InterruptedException 
+     * @throws XMPPException 
+     * @throws SmackException 
+     * @throws IOException 
      */
-    public Chat getChat(Jid serviceName) throws XMPPException, IOException, SmackException, InterruptedException {
+    public Chat getChat(Jid serviceName) throws  InterruptedException, IOException, SmackException, XMPPException {
         Chat chat = chats.get(serviceName);
         if (chat == null) {
             LLPresence presence = getPresenceByServiceName(serviceName);
@@ -682,8 +691,10 @@ public abstract class LLService {
      * @return A connection to the given service name.
      * @throws InterruptedException 
      * @throws XMPPException 
+     * @throws IOException 
+     * @throws SmackException 
      */
-    public XMPPLLConnection getConnection(Jid serviceName) throws IOException, SmackException, XMPPException, InterruptedException {
+    public XMPPLLConnection getConnection(Jid serviceName) throws XMPPException, InterruptedException, SmackException, IOException {
         // If a connection exists, return it.
         XMPPLLConnection connection = getConnectionTo(serviceName);
         if (connection != null)
@@ -714,7 +725,7 @@ public abstract class LLService {
      * @param message the message to be sent.
      * @throws XMPPException if the message cannot be sent.
      */
-    void sendMessage(Message message) throws XMPPException, IOException, SmackException {
+    void sendMessage(Message message) throws XMPPException {
         sendMessage(message);
     }
 
@@ -725,8 +736,11 @@ public abstract class LLService {
      * @param stanza the stanza to be sent.
      * @throws XMPPException if the stanza cannot be sent.
      * @throws InterruptedException 
+     * @throws IOException 
+     * @throws SmackException 
+     * @throws NotConnectedException 
      */
-    public void sendStanza(Stanza stanza) throws XMPPException, IOException, SmackException, InterruptedException {
+    public void sendStanza(Stanza stanza) throws InterruptedException, NotConnectedException, XMPPException, SmackException, IOException {
         getConnection(stanza.getTo()).sendStanza(stanza);
     }
 
@@ -751,9 +765,15 @@ public abstract class LLService {
      *      something from B using connection #1 and B replies using
      *      connection #2, the stanza will still be collected.</li>
      * </ul>
+     * 
+     * @param request
+     * @return
      * @throws InterruptedException 
+     * @throws IOException 
+     * @throws SmackException 
+     * @throws XMPPException 
      */
-    public IQ getIQResponse(IQ request) throws XMPPException, IOException, SmackException, InterruptedException {
+    public IQ getIQResponse(IQ request) throws InterruptedException, XMPPException, SmackException, IOException {
         XMPPLLConnection connection = getConnection(request.getTo());
 
         // Create a stanza collector to listen for a response.
@@ -799,6 +819,7 @@ public abstract class LLService {
 
     /**
      * Get current Link-local presence.
+     * @return
      */
     public LLPresence getLocalPresence() {
         return presence;
@@ -918,7 +939,7 @@ public abstract class LLService {
 
         // A common object used for shared locking between
         // the collectors.
-        private Object lock = new Object();
+        private final Object lock = new Object();
 
         private CollectorWrapper(StanzaFilter stanzaFilter) {
             this.stanzaFilter = stanzaFilter;

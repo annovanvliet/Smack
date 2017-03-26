@@ -53,6 +53,8 @@ public class JmDNSService extends LLService implements ServiceListener {
      * Instantiate a new JmDNSService and start to listen for connections.
      *
      * @param presence the mDNS presence information that should be used.
+     * @return
+     * @throws XMPPException
      */
     public static LLService create(LLPresence presence) throws XMPPException {
         return create(presence, null);
@@ -63,6 +65,8 @@ public class JmDNSService extends LLService implements ServiceListener {
      *
      * @param presence the mDNS presence information that should be used.
      * @param addr the INET Address to use.
+     * @return
+     * @throws XMPPException
      */
     public static LLService create(LLPresence presence, InetAddress addr) throws XMPPException {
         // Start the JmDNS daemon.

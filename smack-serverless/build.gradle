@@ -3,8 +3,10 @@ XEP-0174 Serverless Messaging."""
 
 dependencies {
     compile 'javax.jmdns:jmdns:3.4.1'
-	compile group: 'io.netty', name: 'netty-all', version: '4.1.8.Final'
+  	compile group: 'io.netty', name: 'netty-all', version: '4.1.8.Final'
     compile project(':smack-core')
     compile project(':smack-extensions')
+    testCompile project(path: ":smack-core", configuration: "testRuntime")
+    testCompile project(path: ":smack-core", configuration: "archives")
     
 }

@@ -3,8 +3,8 @@
  */
 package org.jivesoftware.smack.serverless;
 
-import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.SmackException.NoResponseException;
+import org.jivesoftware.smack.SmackException.NotConnectedException;
 import org.jivesoftware.smack.packet.Nonza;
 import org.jivesoftware.smack.packet.Stanza;
 
@@ -22,28 +22,32 @@ public interface LLStream {
     
 
     /**
+     * @throws NotConnectedException 
      * 
      */
-    public void openStream();
+    public void openStream() throws NotConnectedException;
 
 
     /**
+     * @throws NotConnectedException 
      * 
      */
-    public void sendFeatures();
+    public void sendFeatures() throws NotConnectedException;
 
 
     /**
      * @param packet
      * @throws InterruptedException 
+     * @throws NotConnectedException 
      */
-    public void send(Stanza packet) throws InterruptedException;
+    public void send(Stanza packet) throws InterruptedException, NotConnectedException;
 
 
     /**
      * @param packet
+     * @throws NotConnectedException 
      */
-    public void send(Nonza packet);
+    public void send(Nonza packet) throws NotConnectedException;
 
 
     /**
@@ -54,11 +58,11 @@ public interface LLStream {
 
     /**
      * @throws InterruptedException 
-     * @throws SmackException 
      * @throws NoResponseException 
+     * @throws NotConnectedException 
      * 
      */
-    public void openOutgoingStream() throws InterruptedException, NoResponseException;
+    public void openOutgoingStream() throws InterruptedException, NoResponseException, NotConnectedException;
 
 
     /**

@@ -37,8 +37,8 @@ public class XMLFrameDecoder extends ChannelInboundHandlerAdapter {
     }
 
     /**
-     * @param xmppslConnection2
-     * @param remotePresence
+     * @param connection
+     * @param outgoingstream
      */
     public XMLFrameDecoder(XMPPSLConnection connection, LLStream outgoingstream) {
         log.info("init");

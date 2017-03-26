@@ -29,6 +29,7 @@ import org.jivesoftware.smack.AbstractXMPPConnection;
 import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.SmackException.NotConnectedException;
 import org.jivesoftware.smack.XMPPException;
+import org.jivesoftware.smack.XMPPException.XMPPErrorException;
 import org.jivesoftware.smack.packet.Nonza;
 import org.jivesoftware.smack.packet.Stanza;
 import org.jxmpp.jid.parts.Resourcepart;
@@ -116,6 +117,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
 
     /**
      * Return this connection's LLService
+     * @return
      */
     public LLService getService() {
         return service;
@@ -166,21 +168,26 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
 
     /**
      * Start listen for data and a stream tag.
+     * @throws SmackException 
+     * @throws IOException 
+     * @throws XMPPErrorException 
      */
-    void initListen() throws XMPPException, IOException, SmackException {
+    void initListen() throws XMPPErrorException, IOException, SmackException {
         initConnection();
     }
 
     /**
      * Create a socket, connect to the remote peer and initiate a XMPP stream session.
-     * @return 
+     * @throws SmackException 
+     * @throws IOException 
+     * @throws XMPPErrorException 
      */
-    public void connectInternal() throws IOException, SmackException, XMPPException.XMPPErrorException {
-        String host = remotePresence.getHost();
+    public void connectInternal() throws SmackException, XMPPErrorException, IOException {
+        String[] host = remotePresence.getHost();
         int port = remotePresence.getPort();
 
         try {
-            socket = new Socket(host, port);
+            socket = new Socket(host[0], port);
         } catch (Exception e) {
             // TODO
             throw new SmackException(e);
@@ -236,9 +243,10 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
      *
      * @param stanza the stanza to send
      * @throws InterruptedException 
+     * @throws NotConnectedException 
      */
     @Override
-    public void sendStanza(Stanza stanza) throws SmackException.NotConnectedException, InterruptedException {
+    public void sendStanza(Stanza stanza) throws InterruptedException, NotConnectedException {
         updateLastActivity();
         super.sendStanza(stanza);
     }
@@ -246,10 +254,11 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
     /**
      * Initializes the connection by creating a stanza reader and writer and opening a
      * XMPP stream to the server.
-     *
-     * @throws XMPPException if establishing a connection to the server fails.
+     * @throws SmackException 
+     * @throws IOException 
+     * @throws XMPPErrorException 
      */
-    private void initConnection() throws IOException, XMPPException.XMPPErrorException, SmackException {
+    private void initConnection() throws IOException, SmackException, XMPPErrorException {
         try {
             // Set the reader and writer instance variables
             initReaderAndWriter();
@@ -414,18 +423,18 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
         public synchronized void startup() throws IOException, SmackException {
             //readerThread.start();
 
-            try {
-                // Wait until either:
-                // - the remote peer's stream initialization stanza has been parsed
-                // - an exception is thrown while parsing
-                // - the timeout occurs
-                if (connection.isInitiator())
-                    wait(getReplyTimeout());
-            }
-            catch (InterruptedException ie) {
-                // Ignore.
-                ie.printStackTrace();
-            }
+//            try {
+//                // Wait until either:
+//                // - the remote peer's stream initialization stanza has been parsed
+//                // - an exception is thrown while parsing
+//                // - the timeout occurs
+//                if (connection.isInitiator())
+//                    wait(getReplyTimeout());
+//            }
+//            catch (InterruptedException ie) {
+//                // Ignore.
+//                ie.printStackTrace();
+//            }
             if (connection.isInitiator() && !mGotStreamOpenedStanza) {
                 //throwConnectionExceptionOrNoResponse();
             }

@@ -35,7 +35,7 @@ public class LLStreamImpl extends LLStreamModel implements LLStream {
      * @see org.jivesoftware.smack.serverless.LLStream#openOutgoingStream()
      */
     @Override
-    public void openOutgoingStream() throws InterruptedException, NoResponseException {
+    public void openOutgoingStream() throws InterruptedException, NoResponseException, NotConnectedException {
         openStream();
         getReader().waitStreamOpened();
         
@@ -45,7 +45,7 @@ public class LLStreamImpl extends LLStreamModel implements LLStream {
      * @see org.jivesoftware.smack.serverless.LLStream#openStream()
      */
     @Override
-    public void openStream() {
+    public void openStream() throws NotConnectedException {
         logger.fine("openStream" );
 
        StreamOpen streamOpen = new StreamOpen(getRemotePresence().getServiceName(), connection.getMe(), null);
@@ -56,7 +56,7 @@ public class LLStreamImpl extends LLStreamModel implements LLStream {
      * @see org.jivesoftware.smack.serverless.LLStream#sendFeatures()
      */
     @Override
-    public void sendFeatures() {
+    public void sendFeatures() throws NotConnectedException {
         
         StreamFeatures features = new StreamFeatures();
         send(features);
@@ -67,11 +67,11 @@ public class LLStreamImpl extends LLStreamModel implements LLStream {
      * @see org.jivesoftware.smack.serverless.LLStream#send(org.jivesoftware.smack.packet.Stanza)
      */
     @Override
-    public void send(Stanza packet) throws InterruptedException {
+    public void send(Stanza packet) throws InterruptedException, NotConnectedException {
         logger.fine("send" );
         
         if ( getChannel() == null ) {
-          new NotConnectedException("No Channel");
+          throw new NotConnectedException("No Channel");
         } else {
             
             if ( !getReader().isRFC6120Compatible() ) {
@@ -128,12 +128,12 @@ public class LLStreamImpl extends LLStreamModel implements LLStream {
      * @see org.jivesoftware.smack.serverless.LLStream#send(org.jivesoftware.smack.packet.Stanza)
      */
     @Override
-    public void send(Nonza packet) {
+    public void send(Nonza packet) throws NotConnectedException {
         
         if ( getChannel() != null ) {
             getChannel().writeAndFlush(packet);
         } else {
-            new NotConnectedException("No Channel");
+            throw new NotConnectedException("No Channel");
         }
         
     }

@@ -23,19 +23,15 @@ import java.net.InetAddress;
 import java.util.Map;
 
 import javax.jmdns.JmDNS;
-import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceInfo;
-import javax.jmdns.ServiceListener;
 import javax.jmdns.impl.JmDNSImpl;
 
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.serverless.LLPresence;
-import org.jivesoftware.smack.serverless.LLService;
 import org.jivesoftware.smack.serverless.SLService;
 import org.jivesoftware.smack.serverless.XMPPSLConnection;
 import org.jivesoftware.smack.serverless.service.LLPresenceDiscoverer;
 import org.jxmpp.jid.EntityBareJid;
-import org.jxmpp.jid.EntityJid;
 import org.jxmpp.jid.impl.JidCreate;
 
 /**
@@ -57,6 +53,9 @@ public class JmDNSService2 extends SLService {
      *
      * @param presence the mDNS presence information that should be used.
      * @param addr the INET Address to use.
+     * @param connection
+     * @return
+     * @throws XMPPException
      */
     public static SLService create(LLPresence presence, InetAddress addr, XMPPSLConnection connection) throws XMPPException {
         // Start the JmDNS daemon.
@@ -79,6 +78,8 @@ public class JmDNSService2 extends SLService {
 
     /**
      * Start the JmDNS daemon.
+     * @param addr
+     * @throws XMPPException
      */
     private static void initJmDNS(InetAddress addr) throws XMPPException {
         try {
@@ -102,7 +103,9 @@ public class JmDNSService2 extends SLService {
 
     /**
      * Register the DNS-SD service with the daemon.
+     * @param presence
      * @return 
+     * @throws XMPPException
      */
     protected EntityBareJid registerService(LLPresence presence ) throws XMPPException {
         serviceInfo = ServiceInfo.create(SERVICE_TYPE,
@@ -125,6 +128,7 @@ public class JmDNSService2 extends SLService {
      *
      * Note: This method does not accommodate changes to the mDNS Service Name!
      * This method may be used to announce changes to the DNS TXT record.
+     * @throws XMPPException
      */
     protected void reannounceService() throws XMPPException {
         try {

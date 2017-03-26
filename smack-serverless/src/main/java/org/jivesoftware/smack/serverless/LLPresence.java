@@ -18,6 +18,7 @@
 package org.jivesoftware.smack.serverless;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,7 +76,7 @@ public class LLPresence {
 
     // Host details
     private int port = 0;
-    private String host;
+    private String[] host;
     private BareJid serviceName;
     private List<String> groups = new ArrayList<>();
 
@@ -83,13 +84,13 @@ public class LLPresence {
         this.serviceName = serviceName;
     }
 
-    public LLPresence(BareJid serviceName, String host, int port) {
+    public LLPresence(BareJid serviceName, String[] host, int port) {
         this.serviceName = serviceName;
         this.host = host;
         this.port = port;
     }
 
-    public LLPresence(BareJid serviceName, String host, int port,
+    public LLPresence(BareJid serviceName, String[] host, int port,
             Map<String,String> records) {
         this(serviceName, host, port);
 
@@ -270,7 +271,7 @@ public class LLPresence {
         return serviceName;
     }
 
-    public String getHost() {
+    public String[] getHost() {
         return host;
     }
 
@@ -306,8 +307,8 @@ public class LLPresence {
     public boolean equals(Object o) {
         if (o instanceof LLPresence) {
             LLPresence p = (LLPresence)o;
-            return p.serviceName == serviceName &&
-                p.host == host;
+            return p.serviceName.equals(serviceName) &&
+                Arrays.equals(p.host, host);
         }
         return false;
     }
@@ -358,7 +359,7 @@ public class LLPresence {
     }
 
     /**
-     * @param status2
+     * @param statusMode
      * @return
      */
     public static org.jivesoftware.smack.packet.Presence.Mode convertStatus(Mode statusMode) {
@@ -377,7 +378,7 @@ public class LLPresence {
     }
 
     /**
-     * @param status2
+     * @param statusMode
      * @return
      */
     public static Mode convertStatus(org.jivesoftware.smack.packet.Presence.Mode statusMode) {

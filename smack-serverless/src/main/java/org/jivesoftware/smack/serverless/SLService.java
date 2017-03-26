@@ -5,11 +5,11 @@ package org.jivesoftware.smack.serverless;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.logging.Logger;
 
 import org.jivesoftware.smack.SmackConfiguration;
-import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.SmackException.NotConnectedException;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.serverless.service.LLPresenceDiscoverer;
@@ -127,12 +127,9 @@ public abstract class SLService {
 
     
     /**
-     * @param to
-     * @return
+     * @param remoteStream
      * @throws InterruptedException 
      * @throws NotConnectedException 
-     * @throws SmackException 
-     * @throws DNSException 
      */
     public void createNewOutgoingChannel( final LLStream remoteStream ) throws InterruptedException, NotConnectedException {
         
@@ -162,7 +159,7 @@ public abstract class SLService {
         });
 
         // Start the client.
-        Channel channel = b.connect(remoteStream.getRemotePresence().getHost(), remoteStream.getRemotePresence().getPort()).sync().channel(); // (5)
+        Channel channel = b.connect(remoteStream.getRemotePresence().getHost()[0], remoteStream.getRemotePresence().getPort()).sync().channel(); // (5)
 
         remoteStream.setChannel(channel);
         
@@ -203,17 +200,21 @@ public abstract class SLService {
     /**
      * Registers the service to the mDNS/DNS-SD daemon.
      * Should be implemented by the class extending this, for mDNS/DNS-SD library specific calls.
+     * @param presence
      * @return 
+     * @throws XMPPException
      */
     protected abstract EntityBareJid registerService(LLPresence presence) throws XMPPException;
 
     /**
      * Re-announce the presence information by using the mDNS/DNS-SD daemon.
+     * @throws XMPPException 
      */
     protected abstract void reannounceService() throws XMPPException;
 
     /**
      * Update the text field information. Used for setting new presence information.
+     * @param presence
      */
     protected abstract void updateText(LLPresence presence);
 
@@ -225,7 +226,7 @@ public abstract class SLService {
 
         logger.info("Known presences:");
         for (LLPresence presence : presenceDiscoverer.getPresences()) {
-            logger.info(" * " + presence.getServiceName() + "(" + presence.getStatus() + ", " + presence.getHost() + ":" + presence.getPort() + ")");
+            logger.info(" * " + presence.getServiceName() + "(" + presence.getStatus() + ", " + Arrays.toString(presence.getHost()) + ":" + presence.getPort() + ")");
         }
         Thread.currentThread().getThreadGroup().list();
     }
