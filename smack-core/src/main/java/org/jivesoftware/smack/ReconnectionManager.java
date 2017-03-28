@@ -16,10 +16,6 @@
  */
 package org.jivesoftware.smack;
 
-import org.jivesoftware.smack.XMPPException.StreamErrorException;
-import org.jivesoftware.smack.packet.StreamError;
-import org.jivesoftware.smack.util.Async;
-
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.Map;
@@ -27,6 +23,10 @@ import java.util.Random;
 import java.util.WeakHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.jivesoftware.smack.XMPPException.StreamErrorException;
+import org.jivesoftware.smack.packet.StreamError;
+import org.jivesoftware.smack.util.Async;
 
 /**
  * Handles the automatic reconnection process. Every time a connection is dropped without
@@ -51,7 +51,7 @@ import java.util.logging.Logger;
 public final class ReconnectionManager {
     private static final Logger LOGGER = Logger.getLogger(ReconnectionManager.class.getName());
 
-    private static final Map<AbstractXMPPConnection, ReconnectionManager> INSTANCES = new WeakHashMap<AbstractXMPPConnection, ReconnectionManager>();
+    private static final Map<XMPPConnection, ReconnectionManager> INSTANCES = new WeakHashMap<XMPPConnection, ReconnectionManager>();
 
     /**
      * Get a instance of ReconnectionManager for the given connection.
@@ -59,7 +59,7 @@ public final class ReconnectionManager {
      * @param connection
      * @return a ReconnectionManager for the connection.
      */
-    public static synchronized ReconnectionManager getInstanceFor(AbstractXMPPConnection connection) {
+    public static synchronized ReconnectionManager getInstanceFor(XMPPConnection connection) {
         ReconnectionManager reconnectionManager = INSTANCES.get(connection);
         if (reconnectionManager == null) {
             reconnectionManager = new ReconnectionManager(connection);
@@ -100,7 +100,7 @@ public final class ReconnectionManager {
     }
 
     // Holds the connection to the server
-    private final WeakReference<AbstractXMPPConnection> weakRefConnection;
+    private final WeakReference<XMPPConnection> weakRefConnection;
     private final int randomBase = new Random().nextInt(13) + 2; // between 2 and 15 seconds
     private final Runnable reconnectionRunnable;
 
@@ -159,8 +159,8 @@ public final class ReconnectionManager {
 
     private Thread reconnectionThread;
 
-    private ReconnectionManager(AbstractXMPPConnection connection) {
-        weakRefConnection = new WeakReference<AbstractXMPPConnection>(connection);
+    private ReconnectionManager(XMPPConnection connection) {
+        weakRefConnection = new WeakReference<XMPPConnection>(connection);
 
         reconnectionRunnable = new Thread() {
 
@@ -205,7 +205,7 @@ public final class ReconnectionManager {
              * The process will try the reconnection until the connection succeed or the user cancel it
              */
             public void run() {
-                final AbstractXMPPConnection connection = weakRefConnection.get();
+                final XMPPConnection connection = weakRefConnection.get();
                 if (connection == null) {
                     return;
                 }
@@ -221,7 +221,7 @@ public final class ReconnectionManager {
                         try {
                             Thread.sleep(1000);
                             remainingSeconds--;
-                            for (ConnectionListener listener : connection.connectionListeners) {
+                            for (ConnectionListener listener : connection.getConnectionListeners()) {
                                 listener.reconnectingIn(remainingSeconds);
                             }
                         }
@@ -231,7 +231,7 @@ public final class ReconnectionManager {
                         }
                     }
 
-                    for (ConnectionListener listener : connection.connectionListeners) {
+                    for (ConnectionListener listener : connection.getConnectionListeners()) {
                         listener.reconnectingIn(0);
                     }
 
@@ -262,7 +262,7 @@ public final class ReconnectionManager {
                     }
                     catch (SmackException | IOException | XMPPException | InterruptedException e) {
                         // Fires the failed reconnection notification
-                        for (ConnectionListener listener : connection.connectionListeners) {
+                        for (ConnectionListener listener : connection.getConnectionListeners()) {
                             listener.reconnectionFailed(e);
                         }
                     }

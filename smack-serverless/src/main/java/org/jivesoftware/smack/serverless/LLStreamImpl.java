@@ -12,7 +12,6 @@ import org.jivesoftware.smack.packet.Nonza;
 import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.packet.StreamOpen;
-import org.jivesoftware.smack.packet.XMPPError;
 import org.jivesoftware.smack.serverless.packet.StreamFeatures;
 
 /**
@@ -27,7 +26,7 @@ public class LLStreamImpl extends LLStreamModel implements LLStream {
      * @param connection
      * @param remotePresence
      */
-    public LLStreamImpl(XMPPSLConnection connection, LLPresence remotePresence) {
+    public LLStreamImpl(XMPPLLConnection connection, LLPresence remotePresence) {
         super(connection, remotePresence);
     }
     
@@ -76,7 +75,8 @@ public class LLStreamImpl extends LLStreamModel implements LLStream {
             
             if ( !getReader().isRFC6120Compatible() ) {
                 if ( packet instanceof IQ ) {
-                    sendAndReplyOnIQ( (IQ) packet);
+                    connection.sendToDebug(packet);
+                    connection.sendAndReplyOnIQ( (IQ) packet);
                     return;
                 }    
                 if ( packet instanceof Presence ) {
@@ -89,41 +89,6 @@ public class LLStreamImpl extends LLStreamModel implements LLStream {
         
     }
     
-    /**
-     * @param packet
-     * @throws InterruptedException 
-     */
-    private void sendAndReplyOnIQ(IQ iq) throws InterruptedException {
-        logger.finest("sendAndReplyOnIQ");
-        
-        switch (iq.getType()) {
-        case get:
-            sendIQError(iq);
-            break;
-            
-        case set:
-            sendIQError(iq);
-            break;
-
-        default:
-            break;
-        }
-        
-    }
-
-    /**
-     * @param iq
-     * @throws InterruptedException 
-     */
-    private void sendIQError(IQ iq) throws InterruptedException {
-        logger.finest("sendIQError");
-
-        IQ err = IQ.createErrorResponse(iq, XMPPError.getBuilder((
-                        XMPPError.Condition.feature_not_implemented)));
-        
-        connection.autoRespond(err);        
-    }
-
     /* (non-Javadoc)
      * @see org.jivesoftware.smack.serverless.LLStream#send(org.jivesoftware.smack.packet.Stanza)
      */

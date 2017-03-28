@@ -18,6 +18,7 @@ package org.jivesoftware.smack;
 
 
 import java.io.IOException;
+import java.util.Set;
 
 import org.jivesoftware.smack.SmackException.NoResponseException;
 import org.jivesoftware.smack.SmackException.NotConnectedException;
@@ -27,6 +28,7 @@ import org.jivesoftware.smack.iqrequest.IQRequestHandler;
 import org.jivesoftware.smack.packet.ExtensionElement;
 import org.jivesoftware.smack.packet.IQ;
 import org.jivesoftware.smack.packet.Nonza;
+import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.packet.Stanza;
 import org.jxmpp.jid.DomainBareJid;
 import org.jxmpp.jid.EntityFullJid;
@@ -651,14 +653,45 @@ public interface XMPPConnection {
      */
     public long getLastStanzaReceived();
 
+    
     /**
+     * Logs in to the server using the strongest SASL mechanism supported by
+     * the server. If more than the connection's default stanza(/packet) timeout elapses in each step of the 
+     * authentication process without a response from the server, a
+     * {@link SmackException.NoResponseException} will be thrown.
+     * <p>
+     * Before logging in (i.e. authenticate) to the server the connection must be connected
+     * by calling {@link #connect}.
+     * </p>
+     * <p>
+     * It is possible to log in without sending an initial available presence by using
+     * {@link ConnectionConfiguration.Builder#setSendPresence(boolean)}.
+     * Finally, if you want to not pass a password and instead use a more advanced mechanism
+     * while using SASL then you may be interested in using
+     * {@link ConnectionConfiguration.Builder#setCallbackHandler(javax.security.auth.callback.CallbackHandler)}.
+     * For more advanced login settings see {@link ConnectionConfiguration}.
+     * </p>
+     * 
+     * @throws XMPPException if an error occurs on the XMPP protocol level.
+     * @throws SmackException if an error occurs somewhere else besides XMPP protocol level.
+     * @throws IOException if an I/O error occurs during login.
+     * @throws InterruptedException 
+     */
+    void login() throws XMPPException, SmackException, IOException, InterruptedException;
+
+    
+    /**
+     * Login with the given username (authorization identity). You may omit the password if a callback handler is used.
+     * If resource is null, then the server will generate one.
+     * 
      * @param username
      * @param password
      * @param resource
      * @throws XMPPException
      * @throws SmackException
      * @throws IOException
-     * @throws InterruptedException
+     * @throws InterruptedException 
+     * @see #login
      */
     void login(CharSequence username, String password, Resourcepart resource)
                     throws XMPPException, SmackException, IOException, InterruptedException;
@@ -673,8 +706,31 @@ public interface XMPPConnection {
     AbstractXMPPConnection connect() throws SmackException, IOException, XMPPException, InterruptedException;
 
     /**
+     * Closes the connection. A custom unavailable presence is sent to the server, followed
+     * by closing the stream. The XMPPConnection can still be used for connecting to the server
+     * again. A custom unavailable presence is useful for communicating offline presence
+     * information such as "On vacation". Typically, just the status text of the presence
+     * stanza(/packet) is set with online information, but most XMPP servers will deliver the full
+     * presence stanza(/packet) with whatever data is set.
      * 
+     * @param unavailablePresence the presence stanza(/packet) to send during shutdown.
+     * @throws NotConnectedException 
+     */
+    void disconnect(Presence unavailablePresence) throws NotConnectedException;
+
+    /**
+     * Closes the connection by setting presence to unavailable then closing the connection to
+     * the XMPP server. The XMPPConnection can still be used for connecting to the server
+     * again.
+     *
      */
     void disconnect();
+
+    /**
+     * A collection of ConnectionListeners which listen for connection closing
+     * and reconnection events.
+     * @return
+     */
+    public Set<ConnectionListener> getConnectionListeners();
 
 }

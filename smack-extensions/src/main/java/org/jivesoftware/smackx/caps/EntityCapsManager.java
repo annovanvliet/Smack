@@ -117,7 +117,7 @@ public class EntityCapsManager extends Manager {
      * Set of listeners to be notified when the local client's
      * capabilities string is updated
      */
-    private final static Set<CapsVerListener> capsVerListeners =
+    private final Set<CapsVerListener> capsVerListeners =
             new CopyOnWriteArraySet<CapsVerListener>();
 
     static {
@@ -139,11 +139,11 @@ public class EntityCapsManager extends Manager {
         public void capsVerUpdated(CapsVersionAndHash capsVersionAndHash);
     }
 
-    public static void addCapsVerListener(CapsVerListener capsVerListener) {
+    public void addCapsVerListener(CapsVerListener capsVerListener) {
         capsVerListeners.add(capsVerListener);
     }
 
-    public static void removeCapsVerListener(CapsVerListener capsVerListener) {
+    public void removeCapsVerListener(CapsVerListener capsVerListener) {
         capsVerListeners.remove(capsVerListener);
     }
 

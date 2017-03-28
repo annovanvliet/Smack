@@ -23,13 +23,14 @@ import java.net.InetAddress;
 import java.util.Map;
 
 import javax.jmdns.JmDNS;
+import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceInfo;
+import javax.jmdns.ServiceListener;
 import javax.jmdns.impl.JmDNSImpl;
 
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.serverless.LLPresence;
-import org.jivesoftware.smack.serverless.SLService;
-import org.jivesoftware.smack.serverless.XMPPSLConnection;
+import org.jivesoftware.smack.serverless.OldLLService;
 import org.jivesoftware.smack.serverless.service.LLPresenceDiscoverer;
 import org.jxmpp.jid.EntityBareJid;
 import org.jxmpp.jid.impl.JidCreate;
@@ -39,13 +40,24 @@ import org.jxmpp.jid.impl.JidCreate;
  *
  * @author Jonas Ådahl
  */
-public class JmDNSService2 extends SLService {
+public class OldJmDNSService extends OldLLService implements ServiceListener {
     static JmDNS jmdns = null;
     private ServiceInfo serviceInfo;
     static final String SERVICE_TYPE = "_presence._tcp.local.";
 
-    private JmDNSService2(LLPresence presence, LLPresenceDiscoverer presenceDiscoverer, XMPPSLConnection connection) {
-        super(presence, presenceDiscoverer, connection);
+    private OldJmDNSService(LLPresence presence, LLPresenceDiscoverer presenceDiscoverer) {
+        super(presence, presenceDiscoverer);
+    }
+
+    /**
+     * Instantiate a new JmDNSService and start to listen for connections.
+     *
+     * @param presence the mDNS presence information that should be used.
+     * @return
+     * @throws XMPPException
+     */
+    public static OldLLService create(LLPresence presence) throws XMPPException {
+        return create(presence, null);
     }
 
     /**
@@ -53,11 +65,10 @@ public class JmDNSService2 extends SLService {
      *
      * @param presence the mDNS presence information that should be used.
      * @param addr the INET Address to use.
-     * @param connection
      * @return
      * @throws XMPPException
      */
-    public static SLService create(LLPresence presence, InetAddress addr, XMPPSLConnection connection) throws XMPPException {
+    public static OldLLService create(LLPresence presence, InetAddress addr) throws XMPPException {
         // Start the JmDNS daemon.
         initJmDNS(addr);
 
@@ -65,21 +76,19 @@ public class JmDNSService2 extends SLService {
         JmDNSPresenceDiscoverer presenceDiscoverer = new JmDNSPresenceDiscoverer();
 
         // Start the presence service
-        JmDNSService2 service = new JmDNSService2(presence, presenceDiscoverer, connection);
+        OldJmDNSService service = new OldJmDNSService(presence, presenceDiscoverer);
 
         return service;
     }
 
     @Override
-    public void close() throws IOException, InterruptedException {
+    public void close() throws IOException {
         super.close();
         jmdns.close();
     }
 
     /**
      * Start the JmDNS daemon.
-     * @param addr
-     * @throws XMPPException
      */
     private static void initJmDNS(InetAddress addr) throws XMPPException {
         try {
@@ -97,26 +106,26 @@ public class JmDNSService2 extends SLService {
         }
     }
 
-    protected void updateText(LLPresence presence) {
+    protected void updateText() {
         serviceInfo.setText(presence.toMap());
     }
 
     /**
      * Register the DNS-SD service with the daemon.
-     * @param presence
-     * @return 
-     * @throws XMPPException
      */
-    protected EntityBareJid registerService(LLPresence presence ) throws XMPPException {
+    protected void registerService() throws XMPPException {
         serviceInfo = ServiceInfo.create(SERVICE_TYPE,
                 presence.getServiceName().toString(), presence.getPort(), 0, 0, presence.toMap());
-        
+        jmdns.addServiceListener(SERVICE_TYPE, this);
         try {
+            EntityBareJid originalServiceName = JidCreate.entityBareFrom( serviceInfo.getName());
             jmdns.registerService(serviceInfo);
-            
             EntityBareJid realizedServiceName = JidCreate.entityBareFrom( getRealizedServiceName(serviceInfo));
+            presence.setServiceName(realizedServiceName);
 
-            return realizedServiceName;
+            if (!originalServiceName.equals(realizedServiceName)) {
+                serviceNameChanged(realizedServiceName, originalServiceName);
+            }
         }
         catch (IOException ioe) {
             throw new DNSException("Failed to register DNS-SD Service", ioe);
@@ -128,7 +137,6 @@ public class JmDNSService2 extends SLService {
      *
      * Note: This method does not accommodate changes to the mDNS Service Name!
      * This method may be used to announce changes to the DNS TXT record.
-     * @throws XMPPException
      */
     protected void reannounceService() throws XMPPException {
         try {
@@ -142,6 +150,15 @@ public class JmDNSService2 extends SLService {
         }
         catch (IOException ioe) {
             throw new DNSException("Exception occured when reannouncing mDNS presence.", ioe);
+        }
+    }
+
+    public void serviceNameChanged(EntityBareJid newName, EntityBareJid oldName) {
+        try {
+            super.serviceNameChanged(newName, oldName);
+        }
+        catch (Throwable t) {
+            // ignore
         }
     }
 
@@ -160,6 +177,43 @@ public class JmDNSService2 extends SLService {
         System.out.println("Service name: " + serviceInfo.getName());
     }
 
+    /** vv {@link javax.jmdns.ServiceListener} vv **/
+
+    @Override
+    public void serviceAdded(ServiceEvent event) {
+        // Calling super.serviceNameChanged changes
+        // the current local presence to that of the
+        // newly added Service.
+        // How can we assume that a new Service added
+        // corresponds to the local service name changing?
+        // This logic is currently executed when a new client joins
+        // changing the local presence and confusing our chat logic
+        // We could perhaps consider services added at the same host
+        // address to be name changes... But that also opens the
+        // door to undesired behavior when DHCP leases expire
+        // and local addresses are recycled
+
+        // What's wrong with treating new services as new services?
+        // From my reading of XEP-0174, I don't see any reason why
+        // a client should change their service name.
+
+//        System.out.println("Service added " + event.getName());
+//        if (!presence.getServiceName().equals(event.getName())) {
+//            super.serviceNameChanged(event.getName(), presence.getServiceName());
+//        }
+    }
+
+    @Override
+    public void serviceRemoved(ServiceEvent event) {
+
+    }
+
+    @Override
+    public void serviceResolved(ServiceEvent event) {
+
+    }
+
+    /** ^^ {@link javax.jmdns.ServiceListener} ^^ **/
 
     /**
      * JmDNS may change the name of a requested service to enforce uniqueness

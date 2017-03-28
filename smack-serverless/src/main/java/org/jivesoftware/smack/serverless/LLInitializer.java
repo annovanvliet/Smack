@@ -1,6 +1,6 @@
 /**
  *
- * Copyright 2003-2014 Jive Software.
+ * Copyright © 2014 Florian Schmaus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.jivesoftware.smack.serverless.service;
+package org.jivesoftware.smack.serverless;
 
-import org.jivesoftware.smack.serverless.OldLLService;
+import org.jivesoftware.smack.initializer.UrlInitializer;
 
+public class LLInitializer extends UrlInitializer {
 
+    @Override
+    protected String getProvidersUrl() {
+        return "classpath:org.jivesoftware.smack.serverless/serverless.providers";
+    }
 
-/**
- * Notification for new Link-local services created.
- */
-public interface LLServiceListener {
-
-    /**
-     * The function called when a new Link-local service is created.
-     *
-     * @param service the new service
-     */
-    public void serviceCreated(OldLLService service);
 }

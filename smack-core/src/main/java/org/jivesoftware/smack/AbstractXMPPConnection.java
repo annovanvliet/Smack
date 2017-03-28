@@ -440,6 +440,7 @@ public abstract class AbstractXMPPConnection implements XMPPConnection {
      * @throws IOException if an I/O error occurs during login.
      * @throws InterruptedException 
      */
+    @Override
     public synchronized void login() throws XMPPException, SmackException, IOException, InterruptedException {
         // The previously used username, password and resource take over precedence over the
         // ones from the connection configuration
@@ -725,6 +726,7 @@ public abstract class AbstractXMPPConnection implements XMPPConnection {
      * @param unavailablePresence the presence stanza(/packet) to send during shutdown.
      * @throws NotConnectedException 
      */
+    @Override
     public synchronized void disconnect(Presence unavailablePresence) throws NotConnectedException {
         try {
             sendStanza(unavailablePresence);
@@ -754,6 +756,14 @@ public abstract class AbstractXMPPConnection implements XMPPConnection {
         connectionListeners.remove(connectionListener);
     }
 
+    /* (non-Javadoc)
+     * @see org.jivesoftware.smack.XMPPConnection#getConnectionListeners()
+     */
+    @Override
+    public Set<ConnectionListener> getConnectionListeners() {
+        return connectionListeners;
+    }
+    
     @Override
     public StanzaCollector createStanzaCollectorAndSend(IQ packet) throws NotConnectedException, InterruptedException {
         StanzaFilter packetFilter = new IQReplyFilter(packet, this);

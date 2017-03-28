@@ -16,7 +16,7 @@
  */
 package org.jivesoftware.smack.serverless.service;
 
-import org.jivesoftware.smack.serverless.XMPPLLConnection;
+import org.jivesoftware.smack.serverless.OldXMPPLLConnection;
 
 
 /**
@@ -30,5 +30,5 @@ public interface LLServiceConnectionListener {
      *
      * @param connection the new established connection.
      */
-    public void connectionCreated(XMPPLLConnection connection);
+    public void connectionCreated(OldXMPPLLConnection connection);
 }

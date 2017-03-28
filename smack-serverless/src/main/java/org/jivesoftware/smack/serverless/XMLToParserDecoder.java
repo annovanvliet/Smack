@@ -17,19 +17,19 @@ import io.netty.util.ReferenceCountUtil;
  * @author anno
  *
  */
-public class XMLFrameDecoder extends ChannelInboundHandlerAdapter {
+public class XMLToParserDecoder extends ChannelInboundHandlerAdapter {
 
-    private static final Logger log = Logger.getLogger(XMLFrameDecoder.class.getName());
+    private static final Logger log = Logger.getLogger(XMLToParserDecoder.class.getName());
 
     //private XMPPReader reader;
     private PipedInputStream sink;
     private PipedOutputStream source;
 
-    private final XMPPSLConnection xmppslConnection;
+    private final XMPPLLConnection xmppslConnection;
 
     private final LLStream stream;
 
-    public XMLFrameDecoder( XMPPSLConnection xmppslConnection ) {
+    public XMLToParserDecoder( XMPPLLConnection xmppslConnection ) {
 
         log.info("init");
         this.xmppslConnection = xmppslConnection;
@@ -40,7 +40,7 @@ public class XMLFrameDecoder extends ChannelInboundHandlerAdapter {
      * @param connection
      * @param outgoingstream
      */
-    public XMLFrameDecoder(XMPPSLConnection connection, LLStream outgoingstream) {
+    public XMLToParserDecoder(XMPPLLConnection connection, LLStream outgoingstream) {
         log.info("init");
         this.xmppslConnection = connection;
         this.stream = outgoingstream;

@@ -52,9 +52,9 @@ import org.jxmpp.jid.Jid;
  * @author Jonas Ådahl
  */
 public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
-    private static Map<LLService, LLServiceDiscoveryManager> serviceManagers = new ConcurrentHashMap<LLService, LLServiceDiscoveryManager>();
+    private static Map<OldLLService, LLServiceDiscoveryManager> serviceManagers = new ConcurrentHashMap<OldLLService, LLServiceDiscoveryManager>();
 
-    private final LLService service;
+    private final OldLLService service;
 
     /*
      * We'll create a new LLServiceDiscoveryManager each time a new XMPPLLConnection is created. The issue with the
@@ -76,7 +76,7 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
         // });
     }
 
-    protected LLServiceDiscoveryManager(LLService llservice, XMPPConnection connection) {
+    protected LLServiceDiscoveryManager(OldLLService llservice, XMPPConnection connection) {
         super(connection);
         this.service = llservice;
 
@@ -119,7 +119,7 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
 
         // Entity Capabilities
         capsManager = EntityCapsManager.getInstanceFor(connection);
-        EntityCapsManager.addCapsVerListener(new CapsPresenceRenewer());
+        capsManager.addCapsVerListener(new CapsPresenceRenewer());
         // Provide EntityCaps features, identities & node to own DiscoverInfo
         // capsManager.calculateEntityCapsVersion(getOwnDiscoverInfo(),
         // getIdentityType(),
@@ -156,7 +156,7 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
     /**
      * Remove LLServiceDiscoveryManager from the map of existing ones.
      */
-    private static void removeLLServiceDiscoveryManager(LLService service) {
+    private static void removeLLServiceDiscoveryManager(OldLLService service) {
         serviceManagers.remove(service);
     }
 
@@ -166,11 +166,11 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
      * @param service
      * @return instance
      */
-    public static LLServiceDiscoveryManager getInstanceFor(LLService service) {
+    public static LLServiceDiscoveryManager getInstanceFor(OldLLService service) {
         return serviceManagers.get(service);
     }
 
-    public static LLServiceDiscoveryManager getInstanceFor(XMPPLLConnection connection) {
+    public static LLServiceDiscoveryManager getInstanceFor(OldXMPPLLConnection connection) {
         LLServiceDiscoveryManager llsdm = serviceManagers.get(connection.getService());
         if (llsdm == null) {
             llsdm = new LLServiceDiscoveryManager(connection.getService(), connection);
@@ -243,7 +243,7 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
      * @throws XMPPException
      * @returns an established connection to the given service name.
      */
-    private XMPPLLConnection getConnection(Jid serviceName)
+    private OldXMPPLLConnection getConnection(Jid serviceName)
                     throws IOException, SmackException, XMPPException, InterruptedException {
         return service.getConnection(serviceName);
     }
@@ -276,7 +276,7 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
         // extendedInfo = info;
 
         // set for already active connections
-        for (XMPPLLConnection connection : service.getConnections())
+        for (OldXMPPLLConnection connection : service.getConnections())
             ServiceDiscoveryManager.getInstanceFor(connection).setExtendedInfo(info);
 
         renewEntityCapsVersion();
@@ -293,7 +293,7 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
         // extendedInfo = null;
 
         // remove for already active connections
-        for (XMPPLLConnection connection : service.getConnections())
+        for (OldXMPPLLConnection connection : service.getConnections())
             ServiceDiscoveryManager.getInstanceFor(connection).removeExtendedInfo();
 
         renewEntityCapsVersion();
@@ -360,8 +360,8 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
         super.setNodeInformationProvider(node, listener);
 
         // set for already active connections
-        Collection<XMPPLLConnection> connections = service.getConnections();
-        for (XMPPLLConnection connection : connections)
+        Collection<OldXMPPLLConnection> connections = service.getConnections();
+        for (OldXMPPLLConnection connection : connections)
             ServiceDiscoveryManager.getInstanceFor(connection).setNodeInformationProvider(node, listener);
     }
 
@@ -378,7 +378,7 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
         super.removeNodeInformationProvider(node);
 
         // remove from existing connections
-        for (XMPPLLConnection connection : service.getConnections())
+        for (OldXMPPLLConnection connection : service.getConnections())
             ServiceDiscoveryManager.getInstanceFor(connection).removeNodeInformationProvider(node);
     }
 
@@ -391,7 +391,7 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
      */
     @Override
     public void removeFeature(String feature) {
-        for (XMPPLLConnection connection : service.getConnections())
+        for (OldXMPPLLConnection connection : service.getConnections())
             ServiceDiscoveryManager.getInstanceFor(connection).removeFeature(feature);
 
         super.removeFeature(feature);
@@ -487,7 +487,7 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
      */
     private class ConnectionServiceMaintainer implements LLServiceConnectionListener {
 
-        public void connectionCreated(XMPPLLConnection connection) {
+        public void connectionCreated(OldXMPPLLConnection connection) {
             // Add service discovery for Link-local connections.\
             ServiceDiscoveryManager manager = ServiceDiscoveryManager.getInstanceFor(connection);
 

@@ -60,7 +60,7 @@ public class TestLLXMPPConnection extends SmackTestSuite {
             
     }
 
-    private XMPPSLConnection connection;
+    private XMPPLLConnection connection;
     private Roster roster;
 
     /**
@@ -90,7 +90,7 @@ public class TestLLXMPPConnection extends SmackTestSuite {
             Builder config = LLConnectionConfiguration.builder().setLocalPresence(presence);
 
             
-            connection = new XMPPSLConnection(config.build());
+            connection = new XMPPLLConnection(config.build());
             
             connection.addAsyncStanzaListener(new StanzaListener() {
                 
@@ -243,7 +243,7 @@ public class TestLLXMPPConnection extends SmackTestSuite {
     /**
      * @param connection
      */
-    private void spam(XMPPSLConnection connection) {
+    private void spam(XMPPLLConnection connection) {
 
         connection.spam();
         connection.getDNSService().spam();

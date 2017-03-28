@@ -21,9 +21,9 @@ public class SmackDebugInboundHandler extends ChannelInboundHandlerAdapter {
 
     private static final Logger logger = Logger.getLogger(SmackDebugInboundHandler.class.getName());
 
-    private final XMPPSLConnection xmppslConnection;
+    private final XMPPLLConnection xmppslConnection;
 
-    public SmackDebugInboundHandler( XMPPSLConnection xmppslConnection ) {
+    public SmackDebugInboundHandler( XMPPLLConnection xmppslConnection ) {
         logger.finest("init");
         this.xmppslConnection = xmppslConnection;
     }

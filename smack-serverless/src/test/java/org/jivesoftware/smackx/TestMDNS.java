@@ -33,10 +33,10 @@ import org.jivesoftware.smack.chat2.Chat;
 import org.jivesoftware.smack.chat2.IncomingChatMessageListener;
 import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.serverless.LLPresence;
-import org.jivesoftware.smack.serverless.LLService;
+import org.jivesoftware.smack.serverless.OldLLService;
 import org.jivesoftware.smack.serverless.LLServiceDiscoveryManager;
 import org.jivesoftware.smack.serverless.service.LLServiceStateListener;
-import org.jivesoftware.smack.serverless.service.jmdns.JmDNSService;
+import org.jivesoftware.smack.serverless.service.jmdns.OldJmDNSService;
 import org.jivesoftware.smack.test.util.SmackTestSuite;
 import org.jivesoftware.smackx.disco.packet.DiscoverInfo;
 import org.jxmpp.jid.EntityBareJid;
@@ -47,7 +47,7 @@ import org.jxmpp.stringprep.XmppStringprepException;
 //import javax.jmdns.impl.SocketListener;
 
 public class TestMDNS extends SmackTestSuite {
-    LLService service;
+    OldLLService service;
     public static void main(String[] argv) {
         SmackConfiguration.DEBUG = true;
         Handler ch = new ConsoleHandler();
@@ -85,7 +85,7 @@ public class TestMDNS extends SmackTestSuite {
             LLPresence presence = new LLPresence(name);
             System.out.println("Initiating Link-local service...");
             // Create a XMPP Link-local service.
-            service = JmDNSService.create(presence);
+            service = OldJmDNSService.create(presence);
             service.addServiceStateListener(new LLServiceStateListener() {
                 public void serviceNameChanged(Jid newName, Jid oldName) {
                     System.out.println("Service named changed from " + oldName + " to " + newName + "");
@@ -219,9 +219,9 @@ public class TestMDNS extends SmackTestSuite {
     }
 
     private class CloseDownService extends Thread {
-        LLService service;
+        OldLLService service;
         
-        public CloseDownService(LLService service) {
+        public CloseDownService(OldLLService service) {
             this.service = service;
         }
 

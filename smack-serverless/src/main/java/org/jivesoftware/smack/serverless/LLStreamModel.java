@@ -12,14 +12,14 @@ import io.netty.channel.Channel;
 public class LLStreamModel {
 
     private final LLPresence remotePresence;
-    protected final XMPPSLConnection connection;
+    protected final XMPPLLConnection connection;
     
     private Channel channel = null;
     private XMPPReader reader = null;
 
     
     
-    public LLStreamModel( XMPPSLConnection connection, LLPresence remotePresence ) {
+    public LLStreamModel( XMPPLLConnection connection, LLPresence remotePresence ) {
         this.connection = connection;
         this.remotePresence = remotePresence;
     }

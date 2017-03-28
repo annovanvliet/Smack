@@ -18,9 +18,6 @@
 package org.jivesoftware.smack.serverless;
 
 import java.net.InetAddress;
-import java.net.Socket;
-
-import javax.net.SocketFactory;
 
 import org.jivesoftware.smack.ConnectionConfiguration;
 import org.jxmpp.jid.DomainBareJid;
@@ -33,15 +30,15 @@ import org.jxmpp.stringprep.XmppStringprepException;
  */
 public class LLConnectionConfiguration extends ConnectionConfiguration implements Cloneable {
     private static final String SERVICE_NAME = "locallink";
-    private final LLPresence remotePresence;
+
     private final LLPresence localPresence;
-    private final Socket socket;
+    //private final Socket socket;
 
     /**
      * Holds the socket factory that is used to generate the socket in the connection
      */
-    private SocketFactory socketFactory;
-    private InetAddress inetAddress;
+    private final InetAddress inetAddress;
+    private final String bindName;
 
     /**
      * Configuration used for connecting to remote peer.
@@ -51,9 +48,9 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
     public LLConnectionConfiguration(Builder builder) {
         super(builder);
         this.localPresence = builder.localPresence;
-        this.remotePresence = builder.remotePresence;
-        this.socket = builder.socket;
+        //this.socket = builder.socket;
         this.inetAddress = builder.inetAddress;
+        this.bindName = builder.bindName;
     }
 
     // /**
@@ -78,31 +75,6 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
     // }
 
     /**
-     * Tells if the connection is the initiating one.
-     * 
-     * @return true if this configuration is for the connecting connection.
-     */
-    public boolean isInitiator() {
-        return socket == null;
-    }
-
-    // /**
-    // * Return the service name of the remote peer.
-    // * @return the remote peer's service name.
-    // */
-    // public EntityJid getRemoteServiceName() {
-    // return remotePresence.getServiceName();
-    // }
-    //
-    // /**
-    // * Return the service name of this client.
-    // * @return this clients service name.
-    // */
-    // public EntityJid getLocalServiceName() {
-    // return localPresence.getServiceName();
-    // }
-    //
-    /**
      * Return this clients link-local presence information.
      * 
      * @return this clients link-local presence information.
@@ -112,28 +84,17 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
     }
 
     /**
-     * Return the remote client's link-local presence information.
-     * 
-     * @return the remote client's link-local presence information.
-     */
-    public LLPresence getRemotePresence() {
-        return remotePresence;
-    }
-
-    /**
-     * Return the socket which has been established when the remote client connected.
-     * 
-     * @return the socket established when the remote client connected.
-     */
-    public Socket getSocket() {
-        return socket;
-    }
-
-    /**
      * @return
      */
     public InetAddress getInetAddress() {
         return inetAddress;
+    }
+    
+    /**
+     * @return the bindName
+     */
+    public String getBindName() {
+        return bindName;
     }
 
     public static Builder builder() {
@@ -143,10 +104,10 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
     public static final class Builder extends ConnectionConfiguration.Builder<Builder, LLConnectionConfiguration> {
 
         private final DomainBareJid LOCAL_DOMAIN;
-        private LLPresence remotePresence;
         private LLPresence localPresence;
-        private Socket socket;
+        //private Socket socket;
         private InetAddress inetAddress;
+        private String bindName;
 
         private Builder() {
             try {
@@ -180,33 +141,22 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
         }
 
         /**
-         * remote LLPresence for the remote user
+         * The bind IP address which is used
          * 
-         * @param remotePresence the remotePresence to set
-         * @return this
-         */
-        public Builder setRemotePresence(LLPresence remotePresence) {
-            this.remotePresence = remotePresence;
-            return this;
-        }
-
-        /**
-         * the socket which the new connection is assigned to.
-         * 
-         * @param socket the socket to set
-         * @return this
-         */
-        public Builder setSocket(Socket socket) {
-            this.socket = socket;
-            return this;
-        }
-
-        /**
          * @param inetAddress the inetAddress to set
          * @return this
          */
         public Builder setInetAddress(InetAddress inetAddress) {
             this.inetAddress = inetAddress;
+            return this;
+        }
+        
+        /**
+         * @param bindName the bindName to set
+         * @return this
+         */
+        public Builder setBindName(String bindName) {
+            this.bindName = bindName;
             return this;
         }
     }

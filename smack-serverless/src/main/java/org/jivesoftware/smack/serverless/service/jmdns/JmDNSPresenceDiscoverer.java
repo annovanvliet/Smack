@@ -49,11 +49,11 @@ class JmDNSPresenceDiscoverer extends LLPresenceDiscoverer {
     protected static JmDNS jmdns;
 
     JmDNSPresenceDiscoverer() throws XMPPException {
-        jmdns = JmDNSService2.jmdns;
+        jmdns = JmDNSService.jmdns;
         if (jmdns == null)
             throw new DNSException( "Failed to fully initiate mDNS daemon.");
 
-        jmdns.addServiceListener(JmDNSService.SERVICE_TYPE, new PresenceServiceListener());
+        jmdns.addServiceListener(OldJmDNSService.SERVICE_TYPE, new PresenceServiceListener());
     }
 
     /**
