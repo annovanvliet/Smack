@@ -40,6 +40,7 @@ import org.jxmpp.jid.impl.JidCreate;
  *
  * @author Jonas Ådahl
  */
+@Deprecated
 public class OldJmDNSService extends OldLLService implements ServiceListener {
     static JmDNS jmdns = null;
     private ServiceInfo serviceInfo;

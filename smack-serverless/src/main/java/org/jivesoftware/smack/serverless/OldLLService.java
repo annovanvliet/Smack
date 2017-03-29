@@ -86,6 +86,7 @@ import org.jxmpp.jid.Jid;
  *
  * @author Jonas Ådahl
  */
+@Deprecated
 public abstract class OldLLService {
     private static OldLLService service = null;
 
@@ -281,6 +282,7 @@ public abstract class OldLLService {
 
         // start to listen for new connections
         listenerThread = new Thread() {
+            @Override
             public void run() {
                 try {
                     // Listen for connections
@@ -719,15 +721,15 @@ public abstract class OldLLService {
         return connection;
     }
 
-    /**
-     * Send a message to the remote peer.
-     *
-     * @param message the message to be sent.
-     * @throws XMPPException if the message cannot be sent.
-     */
-    void sendMessage(Message message) throws XMPPException {
-        sendMessage(message);
-    }
+//    /**
+//     * Send a message to the remote peer.
+//     *
+//     * @param message the message to be sent.
+//     * @throws XMPPException if the message cannot be sent.
+//     */
+//    void sendMessage(Message message) throws XMPPException {
+//        super.sendMessage(message);
+//    }
 
 
     /**
@@ -847,20 +849,25 @@ public abstract class OldLLService {
 
         }
 
+        @Override
         public void connectionClosed() {
             removeConnectionRecord();
         }
 
+        @Override
         public void connectionClosedOnError(Exception e) {
             removeConnectionRecord();
         }
 
+        @Override
         public void reconnectingIn(int seconds) {
         }
 
+        @Override
         public void reconnectionSuccessful() {
         }
 
+        @Override
         public void reconnectionFailed(Exception e) {
         }
 
@@ -878,13 +885,14 @@ public abstract class OldLLService {
      * Initiates a connection in a seperate thread, controlling
      * it was established correctly and stream was initiated.
      */
-    private class ConnectionInitiatorThread extends Thread {
+    private static class ConnectionInitiatorThread extends Thread {
         OldXMPPLLConnection connection;
 
         ConnectionInitiatorThread(OldXMPPLLConnection connection) {
             this.connection = connection;
         }
 
+        @Override
         public void run() {
 //            try {
 //                connection.initListen();

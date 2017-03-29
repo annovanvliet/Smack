@@ -23,16 +23,18 @@ public interface LLStream {
 
     /**
      * @throws NotConnectedException 
+     * @throws InterruptedException 
      * 
      */
-    public void openStream() throws NotConnectedException;
+    public void openStream() throws NotConnectedException, InterruptedException;
 
 
     /**
      * @throws NotConnectedException 
+     * @throws InterruptedException 
      * 
      */
-    public void sendFeatures() throws NotConnectedException;
+    public void sendFeatures() throws NotConnectedException, InterruptedException;
 
 
     /**
@@ -46,8 +48,9 @@ public interface LLStream {
     /**
      * @param packet
      * @throws NotConnectedException 
+     * @throws InterruptedException 
      */
-    public void send(Nonza packet) throws NotConnectedException;
+    public void send(Nonza packet) throws NotConnectedException, InterruptedException;
 
 
     /**

@@ -44,7 +44,7 @@ public class LLStreamImpl extends LLStreamModel implements LLStream {
      * @see org.jivesoftware.smack.serverless.LLStream#openStream()
      */
     @Override
-    public void openStream() throws NotConnectedException {
+    public void openStream() throws NotConnectedException, InterruptedException {
         logger.fine("openStream" );
 
        StreamOpen streamOpen = new StreamOpen(getRemotePresence().getServiceName(), connection.getMe(), null);
@@ -55,7 +55,7 @@ public class LLStreamImpl extends LLStreamModel implements LLStream {
      * @see org.jivesoftware.smack.serverless.LLStream#sendFeatures()
      */
     @Override
-    public void sendFeatures() throws NotConnectedException {
+    public void sendFeatures() throws NotConnectedException, InterruptedException {
         
         StreamFeatures features = new StreamFeatures();
         send(features);
@@ -83,7 +83,7 @@ public class LLStreamImpl extends LLStreamModel implements LLStream {
                     logger.finest("Probably No support for presences. Trying...");
                 }
             }
-            getChannel().writeAndFlush(packet);
+            getChannel().writeAndFlush(packet).await(connection.getPacketReplyTimeout());
 
         }
         
@@ -93,10 +93,10 @@ public class LLStreamImpl extends LLStreamModel implements LLStream {
      * @see org.jivesoftware.smack.serverless.LLStream#send(org.jivesoftware.smack.packet.Stanza)
      */
     @Override
-    public void send(Nonza packet) throws NotConnectedException {
+    public void send(Nonza packet) throws NotConnectedException, InterruptedException {
         
         if ( getChannel() != null ) {
-            getChannel().writeAndFlush(packet);
+            getChannel().writeAndFlush(packet).await(connection.getPacketReplyTimeout());
         } else {
             throw new NotConnectedException("No Channel");
         }

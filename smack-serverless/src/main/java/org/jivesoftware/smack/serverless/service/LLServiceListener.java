@@ -23,6 +23,7 @@ import org.jivesoftware.smack.serverless.OldLLService;
 /**
  * Notification for new Link-local services created.
  */
+@Deprecated
 public interface LLServiceListener {
 
     /**

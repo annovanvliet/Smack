@@ -33,8 +33,8 @@ import org.jivesoftware.smack.chat2.Chat;
 import org.jivesoftware.smack.chat2.IncomingChatMessageListener;
 import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.serverless.LLPresence;
-import org.jivesoftware.smack.serverless.OldLLService;
 import org.jivesoftware.smack.serverless.LLServiceDiscoveryManager;
+import org.jivesoftware.smack.serverless.OldLLService;
 import org.jivesoftware.smack.serverless.service.LLServiceStateListener;
 import org.jivesoftware.smack.serverless.service.jmdns.OldJmDNSService;
 import org.jivesoftware.smack.test.util.SmackTestSuite;
@@ -46,6 +46,7 @@ import org.jxmpp.stringprep.XmppStringprepException;
 
 //import javax.jmdns.impl.SocketListener;
 
+@Deprecated
 public class TestMDNS extends SmackTestSuite {
     OldLLService service;
     public static void main(String[] argv) {

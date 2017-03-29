@@ -303,7 +303,7 @@ public class LLPresence {
         rest.put(key, value);
     }
 
-    // TODO check where equals/hashcode are used
+    @Override
     public boolean equals(Object o) {
         if (o instanceof LLPresence) {
             LLPresence p = (LLPresence)o;
@@ -313,6 +313,7 @@ public class LLPresence {
         return false;
     }
 
+    @Override
     public int hashCode() {
         return serviceName.hashCode();
     }

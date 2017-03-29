@@ -23,6 +23,7 @@ import org.jivesoftware.smack.serverless.OldXMPPLLConnection;
  * Notification about when new Link-local connections associated with a
  * specific Link-local service has been established.
  */
+@Deprecated
 public interface LLServiceConnectionListener {
 
     /**

@@ -552,12 +552,14 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
          * Initializes the reader in order to be used. The reader is initialized during the first connection and when
          * reconnecting due to an abruptly disconnection.
          */
+        @Override
         public void init() {
             
             if ( done ) {
                 done = false;
 
                 Async.go(new Runnable() {
+                    @Override
                     public void run() {
                         parsePackets();
                     }
@@ -589,6 +591,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
          *
          * @param thread the thread that is being used by the reader to parse incoming packets.
          */
+        @SuppressWarnings("FutureReturnValueIgnored")
         private void parsePackets() {
             try {
                 // initalOpenStreamSend.checkIfSuccessOrWait();
@@ -855,6 +858,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
         /**
          * 
          */
+        @SuppressWarnings("FutureReturnValueIgnored")
         public void disconnectStream() {
 
             channel.writeAndFlush("</stream:stream>");
@@ -962,6 +966,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
      * @param channel
      * @param to
      */
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void setUpStream(Channel channel, Jid to) {
 
         StreamOpen stream = new StreamOpen(to, getMe(), null);
@@ -974,6 +979,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
 
     private class CapsPresenceRenewer implements EntityCapsManager.CapsVerListener {
 
+        @Override
         public void capsVerUpdated(CapsVersionAndHash ver) {
             try {
                 LLPresence presence = localPresence;
@@ -991,6 +997,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
 
     private class MyPresenceListener implements LLPresenceListener {
 
+        @Override
         public void presenceNew(LLPresence presence) {
             logger.fine("presenceNew:" + presence);
             if (presence.getHash() != null && presence.getNode() != null && presence.getVer() != null) {
@@ -1015,6 +1022,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
             }
         }
 
+        @Override
         public void presenceRemove(LLPresence presence) {
             logger.fine("presenceRemove:" + presence);
             // simulate the reception of a presence update

@@ -31,19 +31,19 @@ import java.util.logging.Logger;
 import org.jivesoftware.smack.compress.packet.Compress;
 import org.jivesoftware.smack.packet.EmptyResultIQ;
 import org.jivesoftware.smack.packet.ErrorIQ;
-import org.jivesoftware.smack.packet.ExtensionElement;
 import org.jivesoftware.smack.packet.IQ;
 import org.jivesoftware.smack.packet.Message;
+import org.jivesoftware.smack.packet.Stanza;
+import org.jivesoftware.smack.packet.ExtensionElement;
 import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.packet.Session;
-import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.packet.StartTls;
 import org.jivesoftware.smack.packet.StreamError;
 import org.jivesoftware.smack.packet.UnparsedIQ;
 import org.jivesoftware.smack.packet.XMPPError;
 import org.jivesoftware.smack.parsing.StandardExtensionElementProvider;
-import org.jivesoftware.smack.provider.ExtensionElementProvider;
 import org.jivesoftware.smack.provider.IQProvider;
+import org.jivesoftware.smack.provider.ExtensionElementProvider;
 import org.jivesoftware.smack.provider.ProviderManager;
 import org.jivesoftware.smack.sasl.packet.SaslStreamElements.SASLFailure;
 import org.jxmpp.jid.Jid;
@@ -290,8 +290,6 @@ public class PacketParserUtils {
                     break outerloop;
                 }
                 break;
-            case XmlPullParser.TEXT:
-                //throw new IllegalStateException("Invalid Stanza: Must not contain text or mixed content as direct child of <message/>");
             }
         }
 
@@ -592,8 +590,6 @@ public class PacketParserUtils {
                     break outerloop;
                 }
                 break;
-            case XmlPullParser.TEXT:
-                throw new IllegalStateException("Invalid Stanza: Must not contain text or mixed content as direct child of <presence/>");
             }
         }
         return presence;
@@ -650,8 +646,6 @@ public class PacketParserUtils {
                     break outerloop;
                 }
                 break;
-            case XmlPullParser.TEXT:
-                throw new IllegalStateException("Invalid Stanza: Must not contain text or mixed content as direct child of <iq/>");
             }
         }
         // Decide what to do when an IQ packet was not understood

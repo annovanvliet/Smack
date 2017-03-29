@@ -53,7 +53,7 @@ class JmDNSPresenceDiscoverer extends LLPresenceDiscoverer {
         if (jmdns == null)
             throw new DNSException( "Failed to fully initiate mDNS daemon.");
 
-        jmdns.addServiceListener(OldJmDNSService.SERVICE_TYPE, new PresenceServiceListener());
+        jmdns.addServiceListener(JmDNSService.SERVICE_TYPE, new PresenceServiceListener());
     }
 
     /**

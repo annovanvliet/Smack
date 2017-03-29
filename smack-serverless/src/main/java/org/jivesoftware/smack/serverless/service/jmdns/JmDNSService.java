@@ -98,6 +98,7 @@ public class JmDNSService extends LLService {
         }
     }
 
+    @Override 
     protected void updateText(LLPresence presence) {
         serviceInfo.setText(presence.toMap());
     }
@@ -108,6 +109,7 @@ public class JmDNSService extends LLService {
      * @return 
      * @throws XMPPException
      */
+    @Override 
     protected EntityBareJid registerService(LLPresence presence ) throws XMPPException {
         serviceInfo = ServiceInfo.create(SERVICE_TYPE,
                 presence.getServiceName().toString(), presence.getPort(), 0, 0, presence.toMap());
@@ -131,6 +133,7 @@ public class JmDNSService extends LLService {
      * This method may be used to announce changes to the DNS TXT record.
      * @throws XMPPException
      */
+    @Override 
     protected void reannounceService() throws XMPPException {
         try {
             jmdns.unregisterService(serviceInfo);

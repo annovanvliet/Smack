@@ -41,6 +41,7 @@ import org.xmlpull.v1.XmlPullParser;
  * created by LLService and closed by inactivity.
  *
  */
+@Deprecated
 public class OldXMPPLLConnection extends AbstractXMPPConnection {
 
     private OldLLService service;

@@ -16,6 +16,10 @@
  */
 package org.jivesoftware.smack;
 
+import org.jivesoftware.smack.XMPPException.StreamErrorException;
+import org.jivesoftware.smack.packet.StreamError;
+import org.jivesoftware.smack.util.Async;
+
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.Map;
@@ -23,10 +27,6 @@ import java.util.Random;
 import java.util.WeakHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import org.jivesoftware.smack.XMPPException.StreamErrorException;
-import org.jivesoftware.smack.packet.StreamError;
-import org.jivesoftware.smack.util.Async;
 
 /**
  * Handles the automatic reconnection process. Every time a connection is dropped without
@@ -70,6 +70,7 @@ public final class ReconnectionManager {
 
     static {
         XMPPConnectionRegistry.addConnectionCreationListener(new ConnectionCreationListener() {
+            @Override
             public void connectionCreated(XMPPConnection connection) {
                 if (connection instanceof AbstractXMPPConnection) {
                     ReconnectionManager.getInstanceFor((AbstractXMPPConnection) connection);
@@ -204,6 +205,7 @@ public final class ReconnectionManager {
             /**
              * The process will try the reconnection until the connection succeed or the user cancel it
              */
+            @Override
             public void run() {
                 final XMPPConnection connection = weakRefConnection.get();
                 if (connection == null) {

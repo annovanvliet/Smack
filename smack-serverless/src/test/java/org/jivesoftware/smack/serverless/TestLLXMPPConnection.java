@@ -6,6 +6,7 @@ package org.jivesoftware.smack.serverless;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -137,7 +138,7 @@ public class TestLLXMPPConnection extends SmackTestSuite {
     public void run() {
             // Initiate stdin buffer for reading commands (the fancy UI)
             BufferedReader stdIn = new BufferedReader(
-                    new InputStreamReader(System.in));
+                    new InputStreamReader(System.in, StandardCharsets.UTF_8));
 
 
             // Implement a user friendly interface.

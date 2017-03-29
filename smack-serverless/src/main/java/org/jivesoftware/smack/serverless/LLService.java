@@ -169,7 +169,7 @@ public abstract class LLService {
         
     }
 
-    
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void close() throws IOException, InterruptedException {
         
         serverChannel.close().sync();

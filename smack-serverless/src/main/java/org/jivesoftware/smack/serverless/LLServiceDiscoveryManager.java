@@ -51,6 +51,8 @@ import org.jxmpp.jid.Jid;
  *
  * @author Jonas Ådahl
  */
+@SuppressWarnings("MissingOverride")
+@Deprecated
 public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
     private static Map<OldLLService, LLServiceDiscoveryManager> serviceManagers = new ConcurrentHashMap<OldLLService, LLServiceDiscoveryManager>();
 
@@ -103,8 +105,8 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
                 // are established, so may remove this logic
 
                 // Remove entries
-                EntityCapsManager.removeUserCapsNode(n);
-                EntityCapsManager.removeUserCapsNode(o);
+                EntityCapsManager.removeUserCapsNode(n.toString());
+                EntityCapsManager.removeUserCapsNode(o.toString());
                 LLPresence np = service.getPresenceByServiceName(n);
                 LLPresence op = service.getPresenceByServiceName(o);
 
@@ -199,7 +201,7 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
      * @param response the discover info response packet
      */
     @Override
-    public void addDiscoverInfoTo(DiscoverInfo response) {
+    public synchronized void addDiscoverInfoTo(DiscoverInfo response) {
         // Set this client identity
         DiscoverInfo.Identity identity = new DiscoverInfo.Identity("client", getIdentityName(), getIdentityType());
         response.addIdentity(identity);
@@ -272,7 +274,7 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
      * @param info the data form that contains the extend service discovery information.
      */
     @Override
-    public void setExtendedInfo(DataForm info) {
+    public synchronized void setExtendedInfo(DataForm info) {
         // extendedInfo = info;
 
         // set for already active connections
@@ -289,7 +291,7 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
      * Since no packet is actually sent to the server it is safe to perform this operation before logging to the server.
      */
     @Override
-    public void removeExtendedInfo() {
+    public synchronized void removeExtendedInfo() {
         // extendedInfo = null;
 
         // remove for already active connections
@@ -390,7 +392,7 @@ public class LLServiceDiscoveryManager extends ServiceDiscoveryManager {
      * @param feature the feature to remove from the supported features.
      */
     @Override
-    public void removeFeature(String feature) {
+    public synchronized void removeFeature(String feature) {
         for (OldXMPPLLConnection connection : service.getConnections())
             ServiceDiscoveryManager.getInstanceFor(connection).removeFeature(feature);
 
