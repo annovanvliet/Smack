@@ -318,7 +318,13 @@ public class LLPresence {
         return serviceName.hashCode();
     }
 
-    
+    /* (non-Javadoc)
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        return String.format("LLPresence: user %1$s - %2$s (%3$s, %4$s:%5$d)", getServiceName(), getName() , getStatus(), Arrays.toString(getHost()), getPort());
+    }
     
     /**
      * @return

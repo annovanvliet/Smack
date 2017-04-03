@@ -8,7 +8,9 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.io.Writer;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -62,6 +64,11 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
 
     private static final Logger logger = Logger.getLogger(XMPPLLConnection.class.getName());
 
+    /** 
+     * Counter to uniquely identify streams within a connection that are created.
+     */
+    private final AtomicInteger streamCounter = new AtomicInteger(0);
+
     private LLService service;
     private final LLConnectionConfiguration configuration;
     private final LLPresence localPresence;
@@ -71,8 +78,9 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
     private Map<Jid, LLStream> streams = new TreeMap<>();
 
     private EntityCapsManager capsManager;
-
+    
     private LLPresenceListener myPresenceListener = new MyPresenceListener();
+ 
 
     /**
      * @param configuration
@@ -237,7 +245,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
 
         if (packet.getTo() != null && !packet.getTo().equals(getServiceName()) ) {
 
-            LLStream stream = getStreamByJid(packet.getTo());
+            LLStream stream = getStreamByJid(packet.getTo().asBareJid());
             if (stream != null) {
 
                 //We delegate to the stream
@@ -251,6 +259,11 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
                 logger.warning("no stream found for " + packet.getTo());
             }
 
+        }
+        
+        if ( packet.toXML().toString().startsWith("SPAM") ) {
+            spam();
+            return;
         }
         
         //There is no real world destination, but we can generate some auto responses
@@ -296,7 +309,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
         if ( packet instanceof IQ ) {
             sendAndReplyOnIQ( (IQ) packet);
             return;
-        }    
+        }
 
         logger.info("no addressee or reponse for " + packet);
 
@@ -563,7 +576,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
                     public void run() {
                         parsePackets();
                     }
-                }, "Smack Packet Reader (" + getConnectionCounter() + ")");
+                }, "Smack Packet Reader (" + streamCounter.getAndIncrement() + ")");
             }
 
         }
@@ -819,9 +832,10 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
                                 // sending a closing stream element first. This means that the
                                 // server wants to terminate the session, therefore disconnect
                                 // the connection
-                                logger.info(this + " received closing </stream> element."
-                                                + " Server wants to terminate the connection, calling disconnect()");
+                                logger.info(this + " received closing </stream> element from " + stream
+                                                + ". Remote wants to terminate the connection, calling disconnect()");
                                 disconnectStream();
+                                return;
                             }
                         }
                         break;
@@ -846,6 +860,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
             }
             finally {
                 if (stream != null) {
+                    streams.remove(stream.getRemotePresence().getServiceName());
                     stream.closeChannel();
                 }
                 else {
@@ -929,11 +944,15 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
      * @throws InterruptedException
      * @throws NotConnectedException
      */
-    public LLStream getStreamByJid(Jid jid) throws InterruptedException, NotConnectedException {
+    private LLStream getStreamByJid(Jid jid) throws InterruptedException, NotConnectedException {
 
         LLStream stream = streams.get(jid);
 
         if (stream != null) {
+            
+            if ( stream.getChannel() == null || !stream.getChannel().isOpen() ) {
+                throw new InterruptedException("Channel not open for user:" + jid);
+            }
             return stream;
         }
 
@@ -952,7 +971,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
             }
             catch (NoResponseException e) {
                 logger.log(Level.WARNING, "Cannot open Stream", e);
-                throw new NotConnectedException();
+                throw new NotConnectedException("Cannot open Stream");
             }
 
         }
@@ -1042,10 +1061,31 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
     public void spam() {
 
         // Dump some state
+        logger.info("==== DUMP Connection State (start) ====");
         logger.info("Local presence:" + localPresence.getServiceName());
         logger.info("serviceDomain:" + serviceDomain);
         logger.info("streams:" + streams.size());
+        for (LLStream stream : streams.values()) {
+            logger.info("stream:" + stream );
+        }
 
+        getDNSService().spam();
+        
+        // get Roster cq. all locally known users
+        Roster roster = Roster.getInstanceFor(this);
+        Set<RosterEntry> list = roster.getEntries();
+        if ( list.size() > 0 ) {
+            logger.info("get Roster:");
+        
+          for (RosterEntry rosterEntry : list) {
+              logger.info("Roster entry: " + rosterEntry.toString() + " " + roster.getPresence(rosterEntry.getJid()));
+          }
+        } else {
+            logger.info("Empty roster");
+        }
+        
+        logger.info("==== DUMP Connection State (end) ======");
+        
     }
 
     /**

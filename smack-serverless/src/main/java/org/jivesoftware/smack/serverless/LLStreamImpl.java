@@ -83,6 +83,7 @@ public class LLStreamImpl extends LLStreamModel implements LLStream {
                     logger.finest("Probably No support for presences. Trying...");
                 }
             }
+            packet.setFrom(packet.getFrom().asBareJid());
             getChannel().writeAndFlush(packet).await(connection.getPacketReplyTimeout());
 
         }

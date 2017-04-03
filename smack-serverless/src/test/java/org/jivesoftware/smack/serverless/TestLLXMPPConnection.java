@@ -7,7 +7,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -26,7 +25,6 @@ import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.packet.Presence.Type;
 import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.roster.Roster;
-import org.jivesoftware.smack.roster.RosterEntry;
 import org.jivesoftware.smack.serverless.LLConnectionConfiguration.Builder;
 import org.jivesoftware.smack.test.util.SmackTestSuite;
 import org.jivesoftware.smackx.MDNSListener;
@@ -247,19 +245,6 @@ public class TestLLXMPPConnection extends SmackTestSuite {
     private void spam(XMPPLLConnection connection) {
 
         connection.spam();
-        connection.getDNSService().spam();
-        
-        // get Roster cq. all locally known users
-        Set<RosterEntry> list = roster.getEntries();
-        if ( list.size() > 0 ) {
-          log.info("get Roster:");
-        
-          for (RosterEntry rosterEntry : list) {
-            log.info("Roster entry: " + rosterEntry.toString() + " " + roster.getPresence(rosterEntry.getJid()));
-          }
-        } else {
-          log.info("Empty roster");
-        }
         
     }
 

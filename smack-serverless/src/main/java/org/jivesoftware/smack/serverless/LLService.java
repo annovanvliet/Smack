@@ -6,7 +6,6 @@ package org.jivesoftware.smack.serverless;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.logging.Logger;
 
@@ -230,7 +229,7 @@ public abstract class LLService {
 
         logger.info("Known presences:");
         for (LLPresence presence : presenceDiscoverer.getPresences()) {
-            logger.info(" * " + presence.getServiceName() + "(" + presence.getStatus() + ", " + Arrays.toString(presence.getHost()) + ":" + presence.getPort() + ")");
+            logger.info(" * " + presence.toString() );
         }
         Thread.currentThread().getThreadGroup().list();
     }

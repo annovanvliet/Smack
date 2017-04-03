@@ -91,4 +91,10 @@ public interface LLStream {
      */
     public void setReader(XMPPReader reader);
 
+
+    /**
+     * @return
+     */
+    public Channel getChannel();
+
 }

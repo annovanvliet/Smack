@@ -162,12 +162,15 @@ public class JmDNSService extends LLService {
     public void spam() {
         super.spam();
         logger.info("Service name: " + serviceInfo.getName());
-        try {
-            logger.info(String.format("jMDNS %1$s %2$s %3$s " , jmdns.getHostName(), jmdns.getName(), jmdns.getInterface()));
-        }
-        catch (IOException e) {
-            logger.info("" + e.getMessage());
-            
+        
+        if ( jmdns != null ) {
+            try {
+                logger.info(String.format("jMDNS %1$s %2$s %3$s " , jmdns.getHostName(), jmdns.getName(), jmdns.getInterface()));
+            }
+            catch (IOException e) {
+                logger.info("" + e.getMessage());
+                
+            }
         }
         
         

@@ -60,5 +60,13 @@ public class LLStreamModel {
         this.reader = reader;
     }
 
+    /* (non-Javadoc)
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        
+        return String.format("LLStream: user %1$s channel %2$s", remotePresence , channel );
+    }
 
 }
