@@ -19,13 +19,11 @@ package org.jivesoftware.smack.serverless.service.jmdns;
 
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.util.Map;
+import java.util.Arrays;
 import java.util.logging.Logger;
 
-import javax.jmdns.JmDNS;
+import javax.jmdns.JmmDNS;
 import javax.jmdns.ServiceInfo;
-import javax.jmdns.impl.JmDNSImpl;
 
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.serverless.LLPresence;
@@ -43,7 +41,7 @@ import org.jxmpp.jid.impl.JidCreate;
 public class JmDNSService extends LLService {
     
     private static Logger logger = Logger.getLogger(JmDNSService.class.getName());
-    static JmDNS jmdns = null;
+    static JmmDNS jmdns = null;
     private ServiceInfo serviceInfo;
     static final String SERVICE_TYPE = "_presence._tcp.local.";
 
@@ -55,15 +53,13 @@ public class JmDNSService extends LLService {
      * Instantiate a new JmDNSService and start to listen for connections.
      *
      * @param presence the mDNS presence information that should be used.
-     * @param addr the INET Address to use.
-     * @param name name of the newly created JmDNS
      * @param connection
      * @return
      * @throws XMPPException
      */
-    public static LLService create(LLPresence presence, InetAddress addr, String name, XMPPLLConnection connection) throws XMPPException {
+    public static LLService create(LLPresence presence, XMPPLLConnection connection) throws XMPPException {
         // Start the JmDNS daemon.
-        initJmDNS(addr, name);
+        initJmDNS();
 
         // Start the presence discoverer
         JmDNSPresenceDiscoverer presenceDiscoverer = new JmDNSPresenceDiscoverer();
@@ -77,29 +73,31 @@ public class JmDNSService extends LLService {
     @Override
     public void close() throws IOException, InterruptedException {
         super.close();
+        unregisterService();
         jmdns.close();
         jmdns = null;
     }
 
     /**
      * Start the JmDNS daemon.
-     * @param addr IP address to bind to.
-     * @param name name of the newly created JmDNS
      * @throws XMPPException
      */
-    private static void initJmDNS(InetAddress addr, String name) throws XMPPException {
-        try {
-            if (jmdns == null) {
-                jmdns = JmDNS.create(addr, name);
+    private static void initJmDNS() {
+        if (jmdns == null) {
+            jmdns = JmmDNS.Factory.getInstance();
+
+            //give some time to start
+            try {
+                Thread.sleep(5000);
             }
-        }
-        catch (IOException ioe) {
-            throw new DNSException("Failed to create a JmDNS instance", ioe);
+            catch (InterruptedException e) {
+            }
         }
     }
 
     @Override 
     protected void updateText(LLPresence presence) {
+        
         serviceInfo.setText(presence.toMap());
     }
 
@@ -111,13 +109,17 @@ public class JmDNSService extends LLService {
      */
     @Override 
     protected EntityBareJid registerService(LLPresence presence ) throws XMPPException {
+        logger.fine("registerService");
         serviceInfo = ServiceInfo.create(SERVICE_TYPE,
                 presence.getServiceName().toString(), presence.getPort(), 0, 0, presence.toMap());
         
         try {
             jmdns.registerService(serviceInfo);
             
-            EntityBareJid realizedServiceName = JidCreate.entityBareFrom( getRealizedServiceName(serviceInfo));
+            ServiceInfo[] result = jmdns.getServiceInfos(SERVICE_TYPE, serviceInfo.getName());
+            logger.fine("getServiceInfos:" + Arrays.toString(result));
+            
+            EntityBareJid realizedServiceName = JidCreate.entityBareFrom(serviceInfo.getName());
 
             return realizedServiceName;
         }
@@ -135,6 +137,7 @@ public class JmDNSService extends LLService {
      */
     @Override 
     protected void reannounceService() throws XMPPException {
+        logger.fine("reannounceService");
         try {
             jmdns.unregisterService(serviceInfo);
             jmdns.registerService(serviceInfo);
@@ -152,7 +155,8 @@ public class JmDNSService extends LLService {
     /**
      * Unregister the DNS-SD service, making the client unavailable.
      */
-    public void makeUnavailable() {
+    public void unregisterService() {
+        logger.fine("unregisterService");
         jmdns.unregisterService(serviceInfo);
         serviceInfo = null;
     }
@@ -165,7 +169,7 @@ public class JmDNSService extends LLService {
         
         if ( jmdns != null ) {
             try {
-                logger.info(String.format("jMDNS %1$s %2$s %3$s " , jmdns.getHostName(), jmdns.getName(), jmdns.getInterface()));
+                logger.info(String.format("jMDNS %1$s %2$s %3$s " , Arrays.toString(jmdns.getHostNames()), Arrays.toString(jmdns.getNames()), Arrays.toString(jmdns.getInterfaces())));
             }
             catch (IOException e) {
                 logger.info("" + e.getMessage());
@@ -177,33 +181,23 @@ public class JmDNSService extends LLService {
     }
 
 
-    /**
-     * JmDNS may change the name of a requested service to enforce uniqueness
-     * within its DNS cache. This helper method can be called after {@link javax.jmdns.JmDNS#registerService(javax.jmdns.ServiceInfo)}
-     * with the passed {@link javax.jmdns.ServiceInfo} to attempt to determine the actual service
-     * name registered. e.g: "test@example" may become "test@example (2)"
-     *
-     * @param requestedInfo the ServiceInfo instance passed to {@link javax.jmdns.JmDNS#registerService(javax.jmdns.ServiceInfo)}
-     * @return the unique service name actually being advertised by JmDNS. If no
-     *         match found, return requestedInfo.getName()
-     */
-    private String getRealizedServiceName(ServiceInfo requestedInfo) {
-        Map<String, ServiceInfo> map = ((JmDNSImpl) jmdns).getServices();
-        // Check if requested service name is used verbatim
-        if (map.containsKey(requestedInfo.getKey())) {
-            return map.get(requestedInfo.getKey()).getName();
-        }
-
-        // The service name was altered... Search registered services
-        // e.g test@example.presence._tcp.local would match test@example (2).presence._tcp.local
-        for (ServiceInfo info : map.values()) {
-            if (info.getName().contains(requestedInfo.getName())
-                    && info.getTypeWithSubtype().equals(requestedInfo.getTypeWithSubtype())) {
-                return info.getName();
-            }
-        }
-
-        // No match found! Return expected name
-        return requestedInfo.getName();
-    }
+//    /**
+//     * JmDNS may change the name of a requested service to enforce uniqueness
+//     * within its DNS cache. This helper method can be called after {@link javax.jmdns.JmDNS#registerService(javax.jmdns.ServiceInfo)}
+//     * with the passed {@link javax.jmdns.ServiceInfo} to attempt to determine the actual service
+//     * name registered. e.g: "test@example" may become "test@example (2)"
+//     *
+//     * @param requestedInfo the ServiceInfo instance passed to {@link javax.jmdns.JmDNS#registerService(javax.jmdns.ServiceInfo)}
+//     * @return the unique service name actually being advertised by JmDNS. If no
+//     *         match found, return requestedInfo.getName()
+//     */
+//    private String getRealizedServiceName(ServiceInfo requestedInfo) {
+//        
+//        ServiceInfo[] services = jmdns.getServiceInfos(SERVICE_TYPE, requestedInfo.getName());
+//        
+//        if ( services.length > 0 ) 
+//            return services[0].getName();
+//        
+//        return requestedInfo.getName();
+//    }
 }

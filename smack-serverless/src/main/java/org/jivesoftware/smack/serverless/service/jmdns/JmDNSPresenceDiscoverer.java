@@ -24,8 +24,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-import javax.jmdns.JmDNS;
+import javax.jmdns.JmmDNS;
 import javax.jmdns.ServiceEvent;
+import javax.jmdns.ServiceInfo;
 import javax.jmdns.ServiceListener;
 
 import org.jivesoftware.smack.XMPPException;
@@ -46,7 +47,7 @@ class JmDNSPresenceDiscoverer extends LLPresenceDiscoverer {
     private static final Logger logger = Logger.getLogger(JmDNSPresenceDiscoverer.class.getName());
     
     protected static final int SERVICE_REQUEST_TIMEOUT = 10000; 
-    protected static JmDNS jmdns;
+    protected static JmmDNS jmdns;
 
     JmDNSPresenceDiscoverer() throws XMPPException {
         jmdns = JmDNSService.jmdns;
@@ -54,6 +55,9 @@ class JmDNSPresenceDiscoverer extends LLPresenceDiscoverer {
             throw new DNSException( "Failed to fully initiate mDNS daemon.");
 
         jmdns.addServiceListener(JmDNSService.SERVICE_TYPE, new PresenceServiceListener());
+        
+        ServiceInfo[] res = jmdns.list(JmDNSService.SERVICE_TYPE);
+        logger.info("found:" + res.length);
     }
 
     /**

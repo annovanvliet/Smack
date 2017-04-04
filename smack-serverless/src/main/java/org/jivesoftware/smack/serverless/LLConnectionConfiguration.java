@@ -31,8 +31,20 @@ import org.jxmpp.stringprep.XmppStringprepException;
 public class LLConnectionConfiguration extends ConnectionConfiguration implements Cloneable {
     private static final String SERVICE_NAME = "locallink";
 
+    /**
+     * The default connect timeout in milliseconds. Preinitialized with 30000 (30 seconds). If this value is changed,
+     * new Builder instances will use the new value as default.
+     */
+    public static int DEFAULT_CONNECT_TIMEOUT = 30000;
+
     private final LLPresence localPresence;
-    //private final Socket socket;
+    
+    private final boolean compressionEnabled;
+
+    /**
+     * How long the socket will wait until a TCP connection is established (in milliseconds).
+     */
+    private final int connectTimeout;
 
     /**
      * Holds the socket factory that is used to generate the socket in the connection
@@ -47,32 +59,36 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
      */
     public LLConnectionConfiguration(Builder builder) {
         super(builder);
+        compressionEnabled = builder.compressionEnabled;
+        connectTimeout = builder.connectTimeout;
+
         this.localPresence = builder.localPresence;
         //this.socket = builder.socket;
         this.inetAddress = builder.inetAddress;
         this.bindName = builder.bindName;
     }
 
-    // /**
-    // * Instantiate a link-local configuration when the connection is acting as
-    // * the host.
-    // *
-    // * @param local the local link-local presence class.
-    // * @param remoteSocket the socket which the new connection is assigned to.
-    // */
-    // public LLConnectionConfiguration(LLPresence local, Socket remoteSocket) {
-    // super(builder);
-    // this.localPresence = local;
-    // this.socket = remoteSocket;
-    // }
-    //
-    // @Override
-    // public void setServiceName(String serviceName) {
-    // // ConnectionConfiguration#setServiceName extracts the domain from the serviceName
-    // // e.g "david@guardian" -> "guardian"
-    // // This is not the behavior we want for XEP-0174 clients
-    // this.serviceName = serviceName;
-    // }
+    /**
+     * Returns true if the connection is going to use stream compression. Stream compression
+     * will be requested after TLS was established (if TLS was enabled) and only if the server
+     * offered stream compression. With stream compression network traffic can be reduced
+     * up to 90%. By default compression is disabled.
+     *
+     * @return true if the connection is going to use stream compression.
+     */
+    @Override
+    public boolean isCompressionEnabled() {
+        return compressionEnabled;
+    }
+
+    /**
+     * How long the socket will wait until a TCP connection is established (in milliseconds). Defaults to {@link #DEFAULT_CONNECT_TIMEOUT}.
+     *
+     * @return the timeout value in milliseconds.
+     */
+    public int getConnectTimeout() {
+        return connectTimeout;
+    }
 
     /**
      * Return this clients link-local presence information.
@@ -103,9 +119,11 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
 
     public static final class Builder extends ConnectionConfiguration.Builder<Builder, LLConnectionConfiguration> {
 
+        private boolean compressionEnabled = false;
+        private int connectTimeout = DEFAULT_CONNECT_TIMEOUT;
+
         private final DomainBareJid LOCAL_DOMAIN;
         private LLPresence localPresence;
-        //private Socket socket;
         private InetAddress inetAddress;
         private String bindName;
 
@@ -118,13 +136,28 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
             }
         }
 
-        @Override
-        public LLConnectionConfiguration build() {
-            return new LLConnectionConfiguration(this);
+        /**
+         * Sets if the connection is going to use stream compression. Stream compression
+         * will be requested after TLS was established (if TLS was enabled) and only if the server
+         * offered stream compression. With stream compression network traffic can be reduced
+         * up to 90%. By default compression is disabled.
+         *
+         * @param compressionEnabled if the connection is going to use stream compression.
+         * @return a reference to this object.
+         */
+        public Builder setCompressionEnabled(boolean compressionEnabled) {
+            this.compressionEnabled = compressionEnabled;
+            return this;
         }
 
-        @Override
-        protected Builder getThis() {
+        /**
+         * Set how long the socket will wait until a TCP connection is established (in milliseconds).
+         *
+         * @param connectTimeout the timeout value to be used in milliseconds.
+         * @return a reference to this object.
+         */
+        public Builder setConnectTimeout(int connectTimeout) {
+            this.connectTimeout = connectTimeout;
             return this;
         }
 
@@ -158,6 +191,16 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
         public Builder setBindName(String bindName) {
             this.bindName = bindName;
             return this;
+        }
+        
+        @Override
+        protected Builder getThis() {
+            return this;
+        }
+
+        @Override
+        public LLConnectionConfiguration build() {
+            return new LLConnectionConfiguration(this);
         }
     }
 

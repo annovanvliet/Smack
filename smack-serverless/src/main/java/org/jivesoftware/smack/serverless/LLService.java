@@ -229,7 +229,7 @@ public abstract class LLService {
 
         logger.info("Known presences:");
         for (LLPresence presence : presenceDiscoverer.getPresences()) {
-            logger.info(" * " + presence.toString() );
+            logger.info(" * " + presence.toString() + " TXT:" + presence.toMap()  );
         }
         Thread.currentThread().getThreadGroup().list();
     }
@@ -254,12 +254,9 @@ public abstract class LLService {
      * @throws XMPPException if an error occurs
      */
     public void updateLocalPresence(LLPresence presence) throws XMPPException {
-//        this.presence.update(presence);
-
-        //if (initiated) {
-            updateText(presence);
-            reannounceService();
-        //}
+        
+        updateText(presence);
+        reannounceService();
     }
 
     /**

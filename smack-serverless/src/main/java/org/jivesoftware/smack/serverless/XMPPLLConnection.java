@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.Writer;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -22,7 +23,9 @@ import org.jivesoftware.smack.SmackException.SecurityRequiredException;
 import org.jivesoftware.smack.SynchronizationPoint;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.XMPPException.StreamErrorException;
+import org.jivesoftware.smack.compress.packet.Compress;
 import org.jivesoftware.smack.compress.packet.Compressed;
+import org.jivesoftware.smack.packet.ExtensionElement;
 import org.jivesoftware.smack.packet.IQ;
 import org.jivesoftware.smack.packet.IQ.Type;
 import org.jivesoftware.smack.packet.Message;
@@ -158,7 +161,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
         capsManager.updateLocalEntityCaps();
 
         // Create a basic presence (only set name, and status to available)
-        service = JmDNSService.create(localPresence, configuration.getInetAddress(), configuration.getBindName(), this);
+        service = JmDNSService.create(localPresence, this);
 
         service.prepareBind(localPresence);
 
@@ -656,9 +659,8 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
                             tlsHandled.reportSuccess();
                             throw new StreamErrorException(streamError);
                         case "features":
-                            parseFeatures(parser);
-
-                            lastStreamFeaturesReceived.reportSuccess();
+                            this.parseFeatures(parser);
+                            
                             break;
                         case "proceed":
                             try {
@@ -685,8 +687,9 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
                                 // situation. It is still possible to authenticate and
                                 // use the connection but using an uncompressed connection
                                 // TODO Parse failure stanza
-                                // compressSyncPoint.reportFailure(new SmackException(
-                                // "Could not establish compression"));
+                                if ( stream != null ) {
+                                    stream.compressSyncPoint.reportFailure(new SmackException("Could not establish compression"));
+                                }
                                 break;
                             case SaslStreamElements.NAMESPACE:
                                 // SASL authentication has failed. The server may close the connection
@@ -710,15 +713,24 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
                             // will be to bind the resource
                             getSASLAuthentication().authenticated(success);
                             break;
+                        case Compress.ELEMENT:
+                            // Other client want to initialize a compressed stream
+                            Compress compress = LLPacketParserUtils.parseCompress(parser);
+                            if ( stream != null ) {
+                                stream.handleRequestCompression(compress);
+                            }
+                            break;
                         case Compressed.ELEMENT:
                             // Server confirmed that it's possible to use stream compression. Start
                             // stream compression
-                            // Initialize the reader and writer with the new compressed version
-                            initReaderAndWriter();
-                            // Send a new opening stream to the server
-                            stream.openStream();
-                            // Notify that compression is being used
-                            // compressSyncPoint.reportSuccess();
+                            if ( stream != null ) {
+                                // Initialize the reader and writer with the new compressed version
+                                stream.addCompressionToChannel();
+                                // Send a new opening stream to the server
+                                stream.openStream();
+                                // Notify that compression is being used
+                                stream.compressSyncPoint.reportSuccess();
+                            }
                             break;
                         // case Enabled.ELEMENT:
                         // Enabled enabled = ParseStreamManagement.enabled(parser);
@@ -871,6 +883,22 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
         }
 
         /**
+         * Parse fEatures for this stream
+         * @throws Exception 
+         */
+        private void parseFeatures(XmlPullParser parser) throws Exception {
+            logger.finest("parseFeatures");
+            
+            List<ExtensionElement> features = LLPacketParserUtils.parseFeatures(parser);
+            if ( stream != null ) {
+                stream.addStreamFeatures(features);
+                
+            }
+            lastStreamFeaturesReceived.reportSuccess();
+
+        }
+
+        /**
          * 
          */
         @SuppressWarnings("FutureReturnValueIgnored")
@@ -894,13 +922,13 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
             logger.fine("streamInitiatingReceived:" + fromAddress);
             Jid jid = JidCreate.from(fromAddress);
 
-            LLStream stream = streams.get(jid);
+            stream = streams.get(jid);
 
             if (stream == null) {
                 LLPresence presence = service.getPresenceByServiceName(jid);
                 if (presence != null) {
 
-                    stream = new LLStreamImpl(XMPPLLConnection.this, presence);
+                    stream = new LLStream(XMPPLLConnection.this, presence);
 
                     streams.put(jid, stream);
                 }
@@ -957,26 +985,26 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
         }
 
         LLPresence presence = service.getPresenceByServiceName(jid);
-        if (presence != null) {
-
-            stream = new LLStreamImpl(this, presence);
-            stream.setReader(createOutgoingXMPPReader(stream));
-
-            service.createNewOutgoingChannel(stream);
-
-            streams.put(jid, stream);
-
-            try {
-                stream.openOutgoingStream();
-            }
-            catch (NoResponseException e) {
-                logger.log(Level.WARNING, "Cannot open Stream", e);
-                throw new NotConnectedException("Cannot open Stream");
-            }
-
+        if (presence == null) {
+            throw new NotConnectedException("Unknown user:" + jid);
         }
 
-        return stream;
+        LLStream streamImpl = new LLStream(this, presence);
+        streamImpl.setReader(createOutgoingXMPPReader(streamImpl));
+
+        service.createNewOutgoingChannel(streamImpl);
+
+        streams.put(jid, streamImpl);
+
+        try {
+            streamImpl.openOutgoingStream();
+        }
+        catch (SmackException e) {
+            logger.log(Level.WARNING, "Cannot open Stream", e);
+            throw new NotConnectedException("Cannot open Stream");
+        }
+
+        return streamImpl;
     }
 
     /**
@@ -995,7 +1023,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
         // add listener to the answer
 
     }
-
+    
     private class CapsPresenceRenewer implements EntityCapsManager.CapsVerListener {
 
         @Override
@@ -1025,13 +1053,12 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
             }
 
             if (isAuthenticated()) {
-                // Add user to Roster if not already and not myself
+                // Add/modify user to Roster if not already and not myself
                 if (!presence.getServiceName().equals(localPresence.getServiceName())) {
-                    RosterEntry item = Roster.getInstanceFor(XMPPLLConnection.this).getEntry(presence.getServiceName());
-                    if (item == null) {
-                        RosterPacket rosterPacket = presence.getRosterPacket();
-                        autoRespond(rosterPacket);
-                    }
+
+                    RosterPacket rosterPacket = presence.getRosterPacket();
+                    autoRespond(rosterPacket);
+                    
                 }
 
                 // simulate the reception of a presence update
@@ -1050,7 +1077,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
 
             autoRespond(packet);
             
-            //TODO Maybe also remote from Roster?
+            //TODO Maybe also remove from Roster?
             
         }
     }
@@ -1126,11 +1153,13 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
     
         logger.finest("initDebugPipe");
         
-        if (debugger.getReaderListener() != null) {
-            addAsyncStanzaListener(debugger.getReaderListener(), null);
-        }
-        if (debugger.getWriterListener() != null) {
-            addPacketSendingListener(debugger.getWriterListener(), null);
+        if (debugger != null) {
+            if (debugger.getReaderListener() != null) {
+                addAsyncStanzaListener(debugger.getReaderListener(), null);
+            }
+            if (debugger.getWriterListener() != null) {
+                addPacketSendingListener(debugger.getWriterListener(), null);
+            }
         }
     
     }
@@ -1154,18 +1183,18 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
      */
     void sendToDebug(Stanza stanza) {
         logger.finest("sendToDebug");
-        
-        // TODO mark stanza as auto generated
-        String xml = "AUTO:" + stanza.toXML().toString();
-        char[] arr = xml.toCharArray();
-        try {
-            writer.write(arr, 0, arr.length);
-            writer.flush();
+        if (debugger != null) {
+            // TODO mark stanza as auto generated
+            String xml = "AUTO:" + stanza.toXML().toString();
+            char[] arr = xml.toCharArray();
+            try {
+                writer.write(arr, 0, arr.length);
+                writer.flush();
+            }
+            catch (IOException e) {
+                logger.fine("debug write failed:" + e.getMessage());
+            }
         }
-        catch (IOException e) {
-            logger.fine("debug write failed:" + e.getMessage());
-        }
-        
     }
 
     
@@ -1175,15 +1204,15 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
     public void autoRespond(Stanza stanza) {
         logger.finest("autoRespond");
         
-        //TODO mark stanza as auto generated
-
-        String xml = "AUTO:" + stanza.toXML().toString();
-        char[] arr = xml.toCharArray();
-        try {
-            reader.read(arr, 0, arr.length);
-        }
-        catch (IOException e) {
-            logger.fine("debug read failed:" + e.getMessage());
+        if (debugger != null) {
+            String xml = "AUTO:" + stanza.toXML().toString();
+            char[] arr = xml.toCharArray();
+            try {
+                reader.read(arr, 0, arr.length);
+            }
+            catch (IOException e) {
+                logger.fine("debug read failed:" + e.getMessage());
+            }
         }
 
         try {

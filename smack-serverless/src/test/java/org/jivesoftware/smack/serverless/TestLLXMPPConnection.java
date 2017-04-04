@@ -27,7 +27,6 @@ import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.roster.Roster;
 import org.jivesoftware.smack.serverless.LLConnectionConfiguration.Builder;
 import org.jivesoftware.smack.test.util.SmackTestSuite;
-import org.jivesoftware.smackx.MDNSListener;
 import org.jivesoftware.smackx.disco.ServiceDiscoveryManager;
 import org.jivesoftware.smackx.disco.packet.DiscoverInfo;
 import org.jxmpp.jid.EntityBareJid;
@@ -248,13 +247,14 @@ public class TestLLXMPPConnection extends SmackTestSuite {
         
     }
 
-    private class CloseDownService extends Thread {
+    private static class CloseDownService extends Thread {
         AbstractXMPPConnection service;
         
         public CloseDownService(AbstractXMPPConnection service) {
             this.service = service;
         }
 
+        @Override
         public void run () {
             System.out.println("### Unregistering service....");
             //service.makeUnavailable();
