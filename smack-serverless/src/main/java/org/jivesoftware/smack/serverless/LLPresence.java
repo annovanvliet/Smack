@@ -18,10 +18,12 @@
 package org.jivesoftware.smack.serverless;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 import org.jivesoftware.smack.packet.IQ;
 import org.jivesoftware.smack.packet.Presence;
@@ -76,7 +78,7 @@ public class LLPresence {
 
     // Host details
     private int port = 0;
-    private String[] host;
+    private Set<String> host = new TreeSet<>();
     private BareJid serviceName;
     private List<String> groups = new ArrayList<>();
 
@@ -86,7 +88,9 @@ public class LLPresence {
 
     public LLPresence(BareJid serviceName, String[] host, int port) {
         this.serviceName = serviceName;
-        this.host = host;
+        for (int i = 0; i < host.length; i++) {
+            this.host.add(host[i]);
+        }
         this.port = port;
     }
 
@@ -271,10 +275,20 @@ public class LLPresence {
         return serviceName;
     }
 
-    public String[] getHost() {
+    public Set<String> getHost() {
         return host;
     }
 
+    /**
+     * @param string
+     */
+    public void addHosts(Collection<String> hosts) {
+        host.addAll(hosts);
+        
+    }
+
+
+    
     public String getHash() {
         return hash;
     }
@@ -307,8 +321,7 @@ public class LLPresence {
     public boolean equals(Object o) {
         if (o instanceof LLPresence) {
             LLPresence p = (LLPresence)o;
-            return p.serviceName.equals(serviceName) &&
-                Arrays.equals(p.host, host);
+            return p.serviceName.equals(serviceName);
         }
         return false;
     }
@@ -323,7 +336,7 @@ public class LLPresence {
      */
     @Override
     public String toString() {
-        return String.format("LLPresence: user %1$s - %2$s (%3$s, %4$s:%5$d)", getServiceName(), getName() , getStatus(), Arrays.toString(getHost()), getPort());
+        return String.format("LLPresence: user %1$s - %2$s (%3$s, %4$s:%5$d)", getServiceName(), getName() , getStatus(), getHost(), getPort());
     }
     
     /**

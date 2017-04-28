@@ -162,7 +162,9 @@ public abstract class LLService {
         });
 
         // Start the client.
-        Channel channel = b.connect(remoteStream.getRemotePresence().getHost()[0], remoteStream.getRemotePresence().getPort()).sync().channel(); // (5)
+        String host = remoteStream.getRemotePresence().getHost().iterator().next();
+        
+        Channel channel = b.connect(host, remoteStream.getRemotePresence().getPort()).sync().channel(); // (5)
 
         remoteStream.setChannel(channel);
         
@@ -256,7 +258,7 @@ public abstract class LLService {
     public void updateLocalPresence(LLPresence presence) throws XMPPException {
         
         updateText(presence);
-        reannounceService();
+        //reannounceService();
     }
 
     /**

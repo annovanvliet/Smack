@@ -18,9 +18,10 @@
 package org.jivesoftware.smack.serverless.service;
 
 
-import java.util.Set;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
@@ -93,9 +94,35 @@ public abstract class LLPresenceDiscoverer {
      * @param presence presence information.
      */
     protected void presenceInfoAdded(Jid name, LLPresence presence) {
-        presences.put(name, presence);
-        for (LLPresenceListener l : listeners)
-            l.presenceNew(presence);
+        // is there something to update
+        LLPresence oldPresence = presences.get(name);
+        if ( oldPresence != null && oldPresence.toMap().equals(presence.toMap()) ) {
+            // Nothing changed
+            oldPresence.addHosts( presence.getHost());
+        } else {
+            presences.put(name, presence);
+            for (LLPresenceListener l : listeners)
+                l.presenceNew(presence);
+        }
+        
+        
+        
+    }
+
+    /**
+     * @param host
+     * @param host2
+     * @return 
+     */
+    private String[] mergeArrayValues(String[] host, String[] host2) {
+        Set<String> result = new TreeSet<>();
+        for (int i = 0; i < host.length; i++) {
+            result.add( host[i]);
+        }
+        for (int i = 0; i < host2.length; i++) {
+            result.add( host2[i]);
+        }
+        return result.toArray(new String[0]);
     }
 
     /** 

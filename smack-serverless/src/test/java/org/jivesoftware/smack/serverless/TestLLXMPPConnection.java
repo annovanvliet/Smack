@@ -192,6 +192,22 @@ public class TestLLXMPPConnection extends SmackTestSuite {
                             System.err.println("Illegal status: " + status);
                         }
                     }
+                    else if ("disconnect".equals(line)) {
+                        System.out.print("disconnect connction");
+                        connection.disconnect();
+                    }
+                    else if ("connect".equals(line)) {
+                        System.out.print("connect connction");
+                        connection.connect();
+                    }
+                    else if ("shutdown".equals(line)) {
+                        System.out.print("shutdown connction");
+                        connection.shutdown();
+                    }
+                    else if ("connect".equals(line)) {
+                        System.out.print("connect connction");
+                        connection.connect();
+                    }
                 }
                 catch (XMPPException xe) {
                     System.out.println("Caught XMPPException: " + xe);

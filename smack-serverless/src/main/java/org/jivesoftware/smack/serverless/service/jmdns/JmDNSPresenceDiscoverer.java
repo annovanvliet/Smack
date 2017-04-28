@@ -116,7 +116,7 @@ class JmDNSPresenceDiscoverer extends LLPresenceDiscoverer {
     private class PresenceServiceListener implements ServiceListener {
         @Override
         public void serviceAdded(ServiceEvent event) {
-            logger.fine("serviceAdded");
+            logger.finest("serviceAdded:" + event);
             // XXX
             // To reduce network usage, we should only request information
             // when needed.
@@ -125,7 +125,7 @@ class JmDNSPresenceDiscoverer extends LLPresenceDiscoverer {
         
         @Override
         public void serviceRemoved(ServiceEvent event) {
-            logger.fine("serviceRemoved");
+            logger.fine("serviceRemoved:" + event);
             try {
                 presenceRemoved(JidCreate.from(event.getName()));
             }
@@ -136,6 +136,8 @@ class JmDNSPresenceDiscoverer extends LLPresenceDiscoverer {
         
         @Override
         public void serviceResolved(ServiceEvent event) {
+            logger.finest("event:" + event);
+            logger.finest("ServiceInfo:" + event.getInfo());
             try {
                 EntityBareJid jid = JidCreate.entityBareFrom(event.getName());
                 Map<String, String> records = TXTListToXMPPRecords(TXTToList(event.getInfo().getTextBytes()));

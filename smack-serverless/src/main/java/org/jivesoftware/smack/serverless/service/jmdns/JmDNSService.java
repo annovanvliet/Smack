@@ -24,6 +24,7 @@ import java.util.logging.Logger;
 
 import javax.jmdns.JmmDNS;
 import javax.jmdns.ServiceInfo;
+import javax.jmdns.impl.JmmDNSImpl;
 
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.serverless.LLPresence;
@@ -89,16 +90,27 @@ public class JmDNSService extends LLService {
             //give some time to start
             try {
                 Thread.sleep(5000);
-            }
+            }                       
             catch (InterruptedException e) {
             }
+            
+            try {
+                logger.info(String.format("initJmDNS %1$s %2$s %3$s " , Arrays.toString(jmdns.getHostNames()), Arrays.toString(jmdns.getNames()), Arrays.toString(jmdns.getInterfaces())));
+            }
+            catch (IOException e) {
+                logger.info("" + e.getMessage());
+                
+            }
+            
         }
     }
 
     @Override 
     protected void updateText(LLPresence presence) {
-        
+        logger.fine("updateText");
         serviceInfo.setText(presence.toMap());
+        
+        ((JmmDNSImpl)jmdns).textValueUpdated(serviceInfo,serviceInfo.getTextBytes());
     }
 
     /**
@@ -165,7 +177,12 @@ public class JmDNSService extends LLService {
     @Override
     public void spam() {
         super.spam();
-        logger.info("Service name: " + serviceInfo.getName());
+        if ( serviceInfo != null ) {
+            logger.info("Service name: " + serviceInfo.getName());
+        } else {
+            logger.warning("Service is empty");
+
+        }
         
         if ( jmdns != null ) {
             try {

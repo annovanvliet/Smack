@@ -1058,13 +1058,13 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
 
                     RosterPacket rosterPacket = presence.getRosterPacket();
                     autoRespond(rosterPacket);
-                    
+
+                    // simulate the reception of a presence update
+                    Presence packet = presence.getPresenceStanza();
+
+                    autoRespond(packet);
                 }
 
-                // simulate the reception of a presence update
-                Presence packet = presence.getPresenceStanza();
-
-                autoRespond(packet);
             }
         }
 
