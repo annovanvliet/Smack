@@ -2,7 +2,8 @@ description = """\
 XEP-0174 Serverless Messaging."""
 
 dependencies {
-    compile 'javax.jmdns:jmdns:3.4.1'
+    // compile 'javax.jmdns:jmdns:3.4.1'
+    compile group: 'net.posick', name: 'mdnsjava', version: '2.2.0'
   	compile group: 'io.netty', name: 'netty-all', version: '4.1.8.Final'
     compile project(':smack-core')
     compile project(':smack-extensions')

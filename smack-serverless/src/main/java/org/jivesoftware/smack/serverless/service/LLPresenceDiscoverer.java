@@ -98,7 +98,7 @@ public abstract class LLPresenceDiscoverer {
         LLPresence oldPresence = presences.get(name);
         if ( oldPresence != null && oldPresence.toMap().equals(presence.toMap()) ) {
             // Nothing changed
-            oldPresence.addHosts( presence.getHost());
+            //oldPresence.addHosts( presence.getHost());
         } else {
             presences.put(name, presence);
             for (LLPresenceListener l : listeners)
@@ -133,7 +133,11 @@ public abstract class LLPresenceDiscoverer {
      */
     protected void presenceRemoved(Jid name) {
         LLPresence presence = presences.remove(name);
-        for (LLPresenceListener l : listeners)
-            l.presenceRemove(presence);
+        if ( presence != null ) {
+            for (LLPresenceListener l : listeners)
+                l.presenceRemove(presence);
+        }
     }
+    
+    public abstract void close();
 }

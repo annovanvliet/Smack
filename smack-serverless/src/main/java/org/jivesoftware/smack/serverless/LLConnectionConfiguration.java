@@ -23,6 +23,8 @@ import org.jivesoftware.smack.ConnectionConfiguration;
 import org.jxmpp.jid.DomainBareJid;
 import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.stringprep.XmppStringprepException;
+import org.xbill.DNS.Name;
+import org.xbill.DNS.TextParseException;
 
 /**
  * Link-local connection configuration settings. Two general cases exists, one where the we want to connect to a remote
@@ -51,6 +53,8 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
      */
     private final InetAddress inetAddress;
     private final String bindName;
+    
+    private final Name[] domains;
 
     /**
      * Configuration used for connecting to remote peer.
@@ -66,6 +70,7 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
         //this.socket = builder.socket;
         this.inetAddress = builder.inetAddress;
         this.bindName = builder.bindName;
+        this.domains = builder.domains;
     }
 
     /**
@@ -113,12 +118,25 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
         return bindName;
     }
 
+    /**
+     * @return
+     */
+    public Name[] getDomains() {
+        return domains;
+    }
+
+
     public static Builder builder() {
         return new Builder();
     }
 
     public static final class Builder extends ConnectionConfiguration.Builder<Builder, LLConnectionConfiguration> {
 
+        /**
+         * 
+         */
+        public static final String LOCAL_DOMAIN_NAME = "local.";
+        public Name[] domains;
         private boolean compressionEnabled = false;
         private int connectTimeout = DEFAULT_CONNECT_TIMEOUT;
 
@@ -129,9 +147,10 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
 
         private Builder() {
             try {
-                LOCAL_DOMAIN = JidCreate.domainBareFrom("local");
+                LOCAL_DOMAIN = JidCreate.domainBareFrom(LOCAL_DOMAIN_NAME);
+                domains = new Name[]{new Name(LOCAL_DOMAIN_NAME)};
             }
-            catch (XmppStringprepException e) {
+            catch (XmppStringprepException | TextParseException e) {
                 throw new IllegalArgumentException(e);
             }
         }
@@ -190,6 +209,15 @@ public class LLConnectionConfiguration extends ConnectionConfiguration implement
          */
         public Builder setBindName(String bindName) {
             this.bindName = bindName;
+            return this;
+        }
+        
+        /**
+         * @param domains the domains to set
+         * @return this
+         */
+        public Builder setDomains(Name[] domains) {
+            this.domains = domains;
             return this;
         }
         

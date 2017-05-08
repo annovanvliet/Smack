@@ -161,7 +161,7 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
         capsManager.updateLocalEntityCaps();
 
         // Create a basic presence (only set name, and status to available)
-        service = JmDNSService.create(localPresence, this);
+        service = JmDNSService.create(localPresence, this, configuration.getDomains());
 
         service.prepareBind(localPresence);
 
@@ -435,43 +435,6 @@ public class XMPPLLConnection extends AbstractXMPPConnection {
 
 
 
-    // private final SynchronizationPoint<Exception> initalOpenStreamSend = new SynchronizationPoint<>(
-    // this, "initial open stream element send to server");
-    //
-    // /**
-    // *
-    // */
-    // private final SynchronizationPoint<XMPPException> maybeCompressFeaturesReceived = new
-    // SynchronizationPoint<XMPPException>(
-    // this, "stream compression feature");
-    //
-    // /**
-    // *
-    // */
-    // private final SynchronizationPoint<SmackException> compressSyncPoint = new SynchronizationPoint<>(
-    // this, "stream compression");
-    //
-    // /**
-    // * A synchronization point which is successful if this connection has received the closing
-    // * stream element from the remote end-point, i.e. the server.
-    // */
-    // private final SynchronizationPoint<Exception> closingStreamReceived = new SynchronizationPoint<>(
-    // this, "stream closing element received");
-
-    private void initReaderAndWriter() throws IOException {
-        // InputStream is = socket.getInputStream();
-        // OutputStream os = socket.getOutputStream();
-        // if (compressionHandler != null) {
-        // is = compressionHandler.getInputStream(is);
-        // os = compressionHandler.getOutputStream(os);
-        // }
-        // // OutputStreamWriter is already buffered, no need to wrap it into a BufferedWriter
-        // writer = new OutputStreamWriter(os, "UTF-8");
-        // reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-        //
-        // // If debugging is enabled, we open a window and write out all network traffic.
-        // initDebugger();
-    }
 
     /**
      * Sends out a notification that there was an error with the connection and closes the connection. Also prints the

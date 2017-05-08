@@ -33,6 +33,7 @@ import org.jxmpp.jid.EntityBareJid;
 import org.jxmpp.jid.Jid;
 import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.stringprep.XmppStringprepException;
+import org.xbill.DNS.Options;
 
 /**
  * This test defines use casses for the behaviour af Link Local Connection using Smack.
@@ -48,6 +49,7 @@ public class TestLLXMPPConnection extends SmackTestSuite {
     public static void main(String[] argv) {
         
         SmackConfiguration.DEBUG = true;
+        Options.set("verbose");
         
         TestLLXMPPConnection test = new TestLLXMPPConnection();
         
@@ -55,6 +57,8 @@ public class TestLLXMPPConnection extends SmackTestSuite {
             
             test.run();
         }
+        
+        System.exit(0);
             
     }
 
@@ -83,6 +87,9 @@ public class TestLLXMPPConnection extends SmackTestSuite {
             System.out.println("Link-local presence name set to '" + name + "'");
             // Create a basic presence (only set name, and status to available)
             LLPresence presence = new LLPresence(name);
+            presence.setFirstName("Test1");
+            presence.setLastName("van Tester");
+            presence.setMsg("A Message with whitespace !");
             System.out.println("Initiating Link-local service...");
             // Create a XMPP Link-local service.
             Builder config = LLConnectionConfiguration.builder().setLocalPresence(presence);
@@ -126,6 +133,8 @@ public class TestLLXMPPConnection extends SmackTestSuite {
         catch (XMPPException | SmackException | IOException | InterruptedException e) {
             // TODO Auto-generated catch block
             log.log(Level.WARNING, "Start", e);
+            
+            connection.disconnect();
         }
         
         return false;

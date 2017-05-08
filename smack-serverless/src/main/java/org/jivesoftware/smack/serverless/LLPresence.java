@@ -17,13 +17,12 @@
 
 package org.jivesoftware.smack.serverless;
 
+import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 
 import org.jivesoftware.smack.packet.IQ;
 import org.jivesoftware.smack.packet.Presence;
@@ -31,6 +30,7 @@ import org.jivesoftware.smack.packet.Presence.Type;
 import org.jivesoftware.smack.roster.packet.RosterPacket;
 import org.jivesoftware.smack.roster.packet.RosterPacket.ItemType;
 import org.jxmpp.jid.BareJid;
+import org.xbill.DNS.Name;
 
 /**
  * Class for describing a Link-local presence information according to XEP-0174.
@@ -55,6 +55,7 @@ import org.jxmpp.jid.BareJid;
  * </pre>
  */
 public class LLPresence {
+    private static final String LOCAL_DOMAIN = "local.";
     // Service info, gathered from the TXT fields
     private String firstName, lastName, email, msg, nick, jid;
     // caps version
@@ -77,26 +78,28 @@ public class LLPresence {
     }
 
     // Host details
-    private int port = 0;
-    private Set<String> host = new TreeSet<>();
+    private int port;
+    private final Name host;
+    private final String domain;
     private BareJid serviceName;
     private List<String> groups = new ArrayList<>();
+    private final InetAddress[] addresses;
 
     public LLPresence(BareJid serviceName) {
-        this.serviceName = serviceName;
+        this(serviceName, LOCAL_DOMAIN, null, null, 0,Collections.<String, String> emptyMap());
     }
+//
+//    public LLPresence(BareJid serviceName, Name host, int port) {
+//        this(serviceName, )
+//    }
 
-    public LLPresence(BareJid serviceName, String[] host, int port) {
-        this.serviceName = serviceName;
-        for (int i = 0; i < host.length; i++) {
-            this.host.add(host[i]);
-        }
-        this.port = port;
-    }
-
-    public LLPresence(BareJid serviceName, String[] host, int port,
+    public LLPresence(BareJid serviceName, String domain, InetAddress[] addresses, Name host, int port,
             Map<String,String> records) {
-        this(serviceName, host, port);
+        this.serviceName = serviceName;
+        this.host = host;
+        this.port = port;
+        this.domain = domain;
+        this.addresses = addresses;
 
         // Parse the map (originating from the TXT fields) and put them
         // in variables
@@ -146,10 +149,10 @@ public class LLPresence {
         map.put("1st", firstName);
         map.put("last", lastName);
         map.put("email", email);
-        map.put("jid", jid);
-        map.put("nick", nick);
+        if (jid != null) map.put("jid", jid);
+        if (nick != null) map.put("nick", nick);
         map.put("status", status.toString());
-        map.put("msg", msg);
+        if (msg != null) map.put("msg", msg);
         map.put("hash", hash);
         map.put("node", node);
         map.put("ver", ver);
@@ -177,6 +180,15 @@ public class LLPresence {
         this.serviceName = serviceName;
     }
 
+    /**
+     * @return
+     */
+    public String getDomain() {
+        return domain;
+    }
+
+
+    
     public void setFirstName(String name) {
         firstName = name;
     }
@@ -275,18 +287,18 @@ public class LLPresence {
         return serviceName;
     }
 
-    public Set<String> getHost() {
+    public Name getHost() {
         return host;
     }
 
-    /**
-     * @param string
-     */
-    public void addHosts(Collection<String> hosts) {
-        host.addAll(hosts);
-        
-    }
-
+//    /**
+//     * @param string
+//     */
+//    public void addHosts(Collection<String> hosts) {
+//        host.addAll(hosts);
+//        
+//    }
+//
 
     
     public String getHash() {

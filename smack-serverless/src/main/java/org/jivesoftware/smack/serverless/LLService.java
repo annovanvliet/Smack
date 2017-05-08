@@ -162,7 +162,7 @@ public abstract class LLService {
         });
 
         // Start the client.
-        String host = remoteStream.getRemotePresence().getHost().iterator().next();
+        String host = remoteStream.getRemotePresence().getHost().toString();
         
         Channel channel = b.connect(host, remoteStream.getRemotePresence().getPort()).sync().channel(); // (5)
 
